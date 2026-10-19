@@ -1,0 +1,15 @@
+{
+  "nombre": "Sello + estafas",
+  "frase": "Comprueba antes de confiar.",
+  "icono": "#",
+  "herramienta": "sello",
+  "equipo": "sello-a",
+  "url": "https://build.barraca.house/sello-a",
+  "fuentes": [
+    {
+      "nombre": "www.incibe.es",
+      "url": "https://www.incibe.es/ciudadania/avisos"
+    }
+  ],
+  "datos": "simulados"
+}
