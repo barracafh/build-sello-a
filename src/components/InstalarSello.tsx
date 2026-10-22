@@ -132,6 +132,11 @@ export function AyudaCompartirIos() {
         En iPhone la compartición directa con una web no está disponible: es
         una limitación del sistema. Con copiar y pegar llega.
       </p>
+      <p className="text-[15px] text-(--text-secondary)">
+        Consejo para iPhone: en Safari, toca Compartir y luego «Añadir a
+        pantalla de inicio». Tendrás Varita como una app, a pantalla
+        completa y con su icono.
+      </p>
     </Card>
   );
 }
