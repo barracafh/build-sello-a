@@ -4,11 +4,14 @@ import {
   useEffect,
   useRef,
   useState,
+  type ChangeEvent,
   type ClipboardEvent,
+  type DragEvent,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import { Paperclip, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -42,9 +45,22 @@ type ResultadoEnlaces = {
   enlaces: { texto: string; resultado: ResultadoChat }[];
 };
 
+// Lo que devuelve /api/leer-captura: el texto de la imagen y las palabras que
+// parecen enlaces sin dirección visible.
+type Lectura = {
+  texto: string;
+  remitente: string | null;
+  enlacesOcultos: string[];
+};
+
 type Contenido =
-  | { autor: "usuario"; texto: string; ocultos?: number }
+  | { autor: "usuario"; texto: string; ocultos?: number; imagen?: string }
   | { autor: "asistente"; texto: string }
+  | { autor: "asistente"; lectura: Lectura }
+  | {
+      autor: "asistente";
+      sinDireccion: { palabras: string[]; veredicto?: Veredicto };
+    }
   | { autor: "asistente"; resultado: ResultadoChat }
   | { autor: "asistente"; enlaces: ResultadoEnlaces };
 
@@ -58,7 +74,12 @@ const ETIQUETAS = {
 
 // Textos de datos/mensajes-ejemplo.json, con las URL ya neutralizadas. El
 // correo simula uno copiado con enlaces que enseñan una web y llevan a otra.
-const EJEMPLOS: { etiqueta: string; texto: string; enlaces?: Enlace[] }[] = [
+const EJEMPLOS: {
+  etiqueta: string;
+  texto?: string;
+  enlaces?: Enlace[];
+  captura?: string;
+}[] = [
   {
     etiqueta: "SMS de la DGT",
     texto:
@@ -91,16 +112,40 @@ const EJEMPLOS: { etiqueta: string; texto: string; enlaces?: Enlace[] }[] = [
       { texto: "Pagar ahora", href: "https://dgt-expedientes-pago.top/pago" },
     ],
   },
+  // SMS inventado, con el enlace escondido en «aquí».
+  { etiqueta: "Captura de un SMS", captura: "/ejemplos/captura-sms-dgt.png" },
 ];
 
 const SALUDO: Mensaje = {
   id: 0,
   autor: "asistente",
   texto:
-    "Hola. Pega aquí el SMS, el correo o la dirección web que te ha llegado y te digo si es oficial. No abro los enlaces ni guardo lo que escribes.",
+    "Hola. Pega aquí el SMS, el correo o la dirección web que te ha llegado, o adjunta una captura de pantalla, y te digo si es oficial. No abro los enlaces ni guardo lo que envías.",
 };
 
 const MAX = 4000;
+// Lo que aceptamos del usuario antes de reducirla en el navegador.
+const MAX_IMAGEN = 20 * 1024 * 1024;
+
+// Reduce la captura (lado largo de una captura de móvil: hasta 2560 px) y la
+// pasa a JPEG para no mandar varios MB al servidor. Sigue siendo legible.
+async function reducirImagen(archivo: Blob): Promise<string> {
+  if (!archivo.type.startsWith("image/") || archivo.size > MAX_IMAGEN)
+    throw new Error("Adjunta una imagen PNG, JPG o WebP de menos de 20 MB.");
+  const bitmap = await createImageBitmap(archivo).catch(() => {
+    throw new Error("No he podido abrir esa imagen. Prueba con otra.");
+  });
+  const escala = Math.min(1, 1280 / bitmap.width, 2560 / bitmap.height);
+  const lienzo = document.createElement("canvas");
+  lienzo.width = Math.round(bitmap.width * escala);
+  lienzo.height = Math.round(bitmap.height * escala);
+  const ctx = lienzo.getContext("2d")!;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+  ctx.drawImage(bitmap, 0, 0, lienzo.width, lienzo.height);
+  bitmap.close();
+  return lienzo.toDataURL("image/jpeg", 0.85);
+}
 
 const ahora = () =>
   new Date().toLocaleTimeString("es-ES", {
@@ -129,8 +174,9 @@ async function pedir<T>(ruta_: string, cuerpo: object): Promise<T> {
 async function analizar(
   texto: string,
   ocultos: Enlace[],
+  enlaceOculto = false,
 ): Promise<Contenido[]> {
-  const esUrl = !/\s/.test(texto);
+  const esUrl = !/\s/.test(texto) && !enlaceOculto;
   const esCorreo = /^\s*(asunto|de|from|subject)\s*:/im.test(texto);
   const tareas: Promise<Contenido>[] = [];
   if (!(esUrl && ocultos.length))
@@ -145,6 +191,7 @@ async function analizar(
         : pedir<ResultadoChat>("/api/verificar-mensaje", {
             texto,
             tipo: esCorreo ? "email" : "sms",
+            enlaceOculto,
           }).then((resultado) => ({ autor: "asistente" as const, resultado })),
     );
   if (ocultos.length)
@@ -171,7 +218,10 @@ export function ChatEstafas() {
   const [mensajes, setMensajes] = useState<Mensaje[]>([SALUDO]);
   const [texto, setTexto] = useState("");
   const [ocultos, setOcultos] = useState<Enlace[]>([]);
+  const [adjunto, setAdjunto] = useState<string>();
+  const [errorAdjunto, setErrorAdjunto] = useState<string>();
   const [cargando, setCargando] = useState(false);
+  const selector = useRef<HTMLInputElement>(null);
   const siguienteId = useRef(1);
   const historial = useRef<HTMLDivElement>(null);
   const caja = useRef<HTMLTextAreaElement>(null);
@@ -194,23 +244,127 @@ export function ChatEstafas() {
     setMensajes((prev) => [...prev, m]);
   }
 
-  // Del HTML del portapapeles, los enlaces con su texto visible.
+  async function adjuntar(archivo: Blob) {
+    setErrorAdjunto(undefined);
+    try {
+      setAdjunto(await reducirImagen(archivo));
+    } catch (error) {
+      setErrorAdjunto(
+        error instanceof Error
+          ? error.message
+          : "No he podido abrir esa imagen.",
+      );
+    }
+  }
+
+  // Una imagen pegada se adjunta; del HTML de un correo copiado salen los
+  // enlaces con su texto visible.
   function alPegar(e: ClipboardEvent<HTMLTextAreaElement>) {
+    const imagen = [...e.clipboardData.files].find((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (imagen) {
+      if (!e.clipboardData.getData("text/plain")) e.preventDefault();
+      adjuntar(imagen);
+    }
     const html = e.clipboardData.getData("text/html");
     setOcultos(html ? enlacesDe(html) : []);
   }
 
-  async function enviar(e?: FormEvent, valor = texto, enlaces = ocultos) {
+  function alSoltar(e: DragEvent<HTMLFormElement>) {
+    const imagen = [...e.dataTransfer.files].find((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (!imagen) return;
+    e.preventDefault();
+    adjuntar(imagen);
+  }
+
+  function alElegir(e: ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0];
+    if (archivo) adjuntar(archivo);
+    e.target.value = "";
+  }
+
+  async function enviar(
+    e?: FormEvent,
+    valor = texto,
+    enlaces = ocultos,
+    imagen = adjunto,
+  ) {
     e?.preventDefault();
     const limpio = valor.trim();
-    if (!limpio || cargando || limpio.length > MAX) return;
-    añadir({ autor: "usuario", texto: limpio, ocultos: enlaces.length });
+    if ((!limpio && !imagen) || cargando || limpio.length > MAX) return;
+    añadir({
+      autor: "usuario",
+      texto: limpio,
+      ocultos: enlaces.length,
+      imagen,
+    });
     setTexto("");
     setOcultos([]);
+    setAdjunto(undefined);
+    setErrorAdjunto(undefined);
     setCargando(true);
-    for (const respuesta of await analizar(limpio, enlaces)) añadir(respuesta);
-    setCargando(false);
-    caja.current?.focus();
+    try {
+      if (!imagen) {
+        for (const r of await analizar(limpio, enlaces)) añadir(r);
+        return;
+      }
+      // La captura se lee primero; su texto sigue el mismo camino que si
+      // se hubiera pegado.
+      let lectura: Lectura;
+      try {
+        lectura = await pedir<Lectura>("/api/leer-captura", { imagen });
+      } catch (error) {
+        añadir({
+          autor: "asistente",
+          texto:
+            error instanceof Error
+              ? error.message
+              : "No he podido leer la captura. Pega el texto.",
+        });
+        return;
+      }
+      if (!lectura.texto) {
+        añadir({
+          autor: "asistente",
+          texto:
+            "No he encontrado texto en la captura. Prueba con otra más nítida o pega el texto del mensaje.",
+        });
+        return;
+      }
+      añadir({ autor: "asistente", lectura });
+      const conOculto = lectura.enlacesOcultos.length > 0;
+      const respuestas = await analizar(
+        [limpio, lectura.texto].filter(Boolean).join("\n\n").slice(0, MAX),
+        enlaces,
+        conOculto,
+      );
+      for (const r of respuestas) añadir(r);
+      if (conOculto)
+        añadir({
+          autor: "asistente",
+          sinDireccion: {
+            palabras: lectura.enlacesOcultos,
+            veredicto: respuestas.find((r) => "resultado" in r)?.resultado
+              .veredicto,
+          },
+        });
+    } finally {
+      setCargando(false);
+      caja.current?.focus();
+    }
+  }
+
+  async function enviarEjemplo(ejemplo: (typeof EJEMPLOS)[number]) {
+    if (!ejemplo.captura)
+      return enviar(undefined, ejemplo.texto ?? "", ejemplo.enlaces ?? []);
+    const imagen = await fetch(ruta(ejemplo.captura))
+      .then((r) => r.blob())
+      .then(reducirImagen)
+      .catch(() => undefined);
+    if (imagen) enviar(undefined, "", [], imagen);
   }
 
   // Intro envía; Mayús + Intro hace un salto de línea.
@@ -225,6 +379,8 @@ export function ChatEstafas() {
     setMensajes([SALUDO]);
     setTexto("");
     setOcultos([]);
+    setAdjunto(undefined);
+    setErrorAdjunto(undefined);
     caja.current?.focus();
   }
 
@@ -273,7 +429,12 @@ export function ChatEstafas() {
         >
           {mensajes.map((m) =>
             m.autor === "usuario" ? (
-              <BurbujaUsuario key={m.id} hora={m.hora} ocultos={m.ocultos}>
+              <BurbujaUsuario
+                key={m.id}
+                hora={m.hora}
+                ocultos={m.ocultos}
+                imagen={m.imagen}
+              >
                 {m.texto}
               </BurbujaUsuario>
             ) : (
@@ -282,6 +443,10 @@ export function ChatEstafas() {
                   <Resultado r={m.resultado} />
                 ) : "enlaces" in m ? (
                   <ResultadoDeEnlaces r={m.enlaces} />
+                ) : "lectura" in m ? (
+                  <LecturaCaptura l={m.lectura} />
+                ) : "sinDireccion" in m ? (
+                  <EnlaceSinDireccion {...m.sinDireccion} />
                 ) : (
                   <p>{m.texto}</p>
                 )}
@@ -316,9 +481,7 @@ export function ChatEstafas() {
                   variant="outline"
                   size="sm"
                   className="rounded-full"
-                  onClick={() =>
-                    enviar(undefined, ejemplo.texto, ejemplo.enlaces ?? [])
-                  }
+                  onClick={() => enviarEjemplo(ejemplo)}
                 >
                   {ejemplo.etiqueta}
                 </Button>
@@ -328,11 +491,59 @@ export function ChatEstafas() {
         </div>
 
         {/* Caja de escribir */}
-        <form onSubmit={enviar} className="border-t bg-background p-3">
+        <form
+          onSubmit={enviar}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={alSoltar}
+          className="border-t bg-background p-3"
+        >
           <label htmlFor="mensaje-chat" className="sr-only">
             Mensaje o dirección web
           </label>
+          {adjunto && (
+            <div className="mb-2 flex items-center gap-3 rounded-xl bg-muted p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element -- data URL local, no pasa por next/image */}
+              <img
+                src={adjunto}
+                alt="Captura adjunta"
+                className="size-12 rounded-lg object-cover object-top"
+              />
+              <p className="min-w-0 flex-1 text-sm">
+                Captura lista. Leeré su texto al enviar.
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Quitar la captura"
+                onClick={() => setAdjunto(undefined)}
+              >
+                <X />
+              </Button>
+            </div>
+          )}
+          <input
+            ref={selector}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            tabIndex={-1}
+            aria-hidden="true"
+            className="sr-only"
+            onChange={alElegir}
+          />
           <div className="flex items-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-lg"
+              aria-label="Adjuntar una captura de pantalla"
+              title="Adjuntar una captura de pantalla"
+              disabled={cargando}
+              onClick={() => selector.current?.click()}
+              className="size-11 shrink-0 rounded-full"
+            >
+              <Paperclip className="size-5" />
+            </Button>
             <textarea
               ref={caja}
               id="mensaje-chat"
@@ -344,7 +555,7 @@ export function ChatEstafas() {
                 if (!e.target.value.trim()) setOcultos([]);
               }}
               onKeyDown={teclado}
-              placeholder="Pega el SMS, el correo o la URL…"
+              placeholder="Pega el SMS, el correo, la URL o una captura…"
               autoComplete="off"
               spellCheck={false}
               rows={1}
@@ -355,7 +566,9 @@ export function ChatEstafas() {
             <Button
               type="submit"
               variant="sunset"
-              disabled={cargando || !texto.trim() || demasiadoLargo}
+              disabled={
+                cargando || (!texto.trim() && !adjunto) || demasiadoLargo
+              }
               className="h-11 shrink-0 rounded-full px-5 text-base"
             >
               Enviar
@@ -365,14 +578,18 @@ export function ChatEstafas() {
             id="mensaje-chat-ayuda"
             className={cn(
               "mt-2 px-1 text-sm",
-              demasiadoLargo ? "text-destructive" : "text-(--text-secondary)",
+              demasiadoLargo || errorAdjunto
+                ? "text-destructive"
+                : "text-(--text-secondary)",
             )}
           >
-            {demasiadoLargo
-              ? `Máximo ${MAX.toLocaleString("es-ES")} caracteres.`
-              : ocultos.length
-                ? `He encontrado ${ocultos.length} ${ocultos.length === 1 ? "enlace" : "enlaces"} en lo que has pegado, también los escondidos tras un texto o un botón. Comprobaré adónde llevan.`
-                : "Intro para enviar · Mayús + Intro para otra línea"}
+            {errorAdjunto
+              ? errorAdjunto
+              : demasiadoLargo
+                ? `Máximo ${MAX.toLocaleString("es-ES")} caracteres.`
+                : ocultos.length
+                  ? `He encontrado ${ocultos.length} ${ocultos.length === 1 ? "enlace" : "enlaces"} en lo que has pegado, también los escondidos tras un texto o un botón. Comprobaré adónde llevan.`
+                  : "Intro para enviar · Mayús + Intro para otra línea"}
           </p>
         </form>
       </section>
@@ -387,19 +604,34 @@ function BurbujaUsuario({
   children,
   hora,
   ocultos,
+  imagen,
 }: {
   children: string;
   hora?: string;
   ocultos?: number;
+  imagen?: string;
 }) {
   return (
     <div className="flex flex-col items-end">
       <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-base text-primary-foreground">
         <span className="sr-only">Tú: </span>
+        {imagen && (
+          // eslint-disable-next-line @next/next/no-img-element -- data URL local, no pasa por next/image
+          <img
+            src={imagen}
+            alt="Captura de pantalla enviada"
+            className={cn(
+              "max-h-72 w-auto rounded-lg bg-background",
+              children && "mb-2",
+            )}
+          />
+        )}
         {/* Texto plano: las URL que pega el ciudadano nunca se vuelven enlaces. */}
-        <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">
-          {children}
-        </p>
+        {children && (
+          <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">
+            {children}
+          </p>
+        )}
         {!!ocultos && (
           <p className="mt-1 text-sm opacity-80">
             + {ocultos}{" "}
@@ -443,6 +675,62 @@ function Hora({ children }: { children: string }) {
     <span className="mt-1 min-h-5 px-1 font-mono text-xs text-(--text-secondary)">
       {children}
     </span>
+  );
+}
+
+// Lo que el modelo ha leído en la captura, para que el usuario lo compare.
+function LecturaCaptura({ l }: { l: Lectura }) {
+  return (
+    <div className="grid gap-2">
+      <p>He leído esto en la captura:</p>
+      <blockquote className="rounded-xl bg-muted px-4 py-3 whitespace-pre-wrap [overflow-wrap:anywhere]">
+        {l.remitente && (
+          <span className="mb-1 block text-sm text-(--text-secondary)">
+            Remitente: {l.remitente}
+          </span>
+        )}
+        {l.texto}
+      </blockquote>
+      <p className="text-sm text-(--text-secondary)">
+        Si algo no coincide con tu captura, pega el texto y lo compruebo de
+        nuevo.
+      </p>
+    </div>
+  );
+}
+
+// En una imagen, un enlace sobre una palabra no deja ver adónde lleva.
+function EnlaceSinDireccion({
+  palabras,
+  veredicto,
+}: {
+  palabras: string[];
+  veredicto?: Veredicto;
+}) {
+  const varios = palabras.length > 1;
+  const lista = palabras.map((p) => `«${p}»`).join(", ");
+  return (
+    <div className="grid gap-2 rounded-xl bg-(--warning) p-4 text-(--warning-foreground)">
+      <p className="font-medium">
+        {varios
+          ? "Hay enlaces que no puedo comprobar"
+          : "Hay un enlace que no puedo comprobar"}
+      </p>
+      <p>
+        En la captura, {lista} {varios ? "son enlaces" : "es un enlace"}, pero
+        una imagen no muestra adónde {varios ? "llevan" : "lleva"}. No he podido
+        comprobar la dirección.
+      </p>
+      <p>
+        {veredicto === "no_oficial"
+          ? "Con lo que se ve, el mensaje ya tiene señales de fraude: no lo pulses."
+          : "No lo pulses hasta saber adónde lleva."}
+      </p>
+      <p>
+        Para comprobarlo: en el móvil, mantén pulsado el enlace, elige «Copiar
+        enlace» (sin abrirlo) y pégalo aquí.
+      </p>
+    </div>
   );
 }
 

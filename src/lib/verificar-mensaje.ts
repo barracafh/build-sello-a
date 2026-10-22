@@ -46,15 +46,18 @@ export type MensajeResultado = {
 const entidadPorNombre = (nombre: string) =>
   lista.entidades.find((e) => e.entidad === nombre);
 
+// `enlaceOculto`: en una captura de pantalla se ve una palabra con enlace
+// («aquí», «Pagar») pero no su dirección. Cuenta como enlace para las reglas.
 export function verificarMensaje(
   texto: string,
   tipo: "sms" | "email" = "sms",
+  enlaceOculto = false,
 ): MensajeResultado {
   const enlaces = resolverEnlaces(texto);
   const { concluyentes, avisos: senalesAviso } = patronesContenido(
     texto,
     tipo,
-    enlaces.length > 0,
+    enlaces.length > 0 || enlaceOculto,
   );
 
   // 1. Cada enlace, por el verificador de webs (sin abrirlo).
@@ -71,6 +74,10 @@ export function verificarMensaje(
   const pasos: string[] = [
     "He leído tu mensaje solo como texto: no he abierto sus enlaces ni he seguido redirecciones.",
   ];
+  if (enlaceOculto)
+    pasos.push(
+      "Tiene un enlace escondido tras una palabra: no se ve adónde lleva, así que no lo puedo comprobar, pero cuenta como enlace.",
+    );
   const avisos: string[] = [];
   const fuentes: Source[] = [INCIBE_AVISOS, INCIBE_017];
 
