@@ -40,13 +40,13 @@
 
 :root {
   --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
+  --foreground: #171717;
   --card: #ffffff;
   --card-foreground: oklch(0.145 0 0);
   --popover: #ffffff;
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: #7f56d9;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -56,12 +56,12 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --brand: #df1717;
-  --text-secondary: #4d4d4d;
-  --brand-dark: #a50e0e;
-  --brand-orange: #ff7a1a;
-  --brand-yellow: #ffbe0b;
+  --ring: #9e77ed;
+  --brand: #7f56d9;
+  --text-secondary: #525252;
+  --brand-dark: #6941c6;
+  --brand-orange: #b692f6;
+  --brand-yellow: #e9d7fe;
   --warning: #fff3d1;
   --warning-foreground: #6b4a00;
   --disabled: #e4e4e4;
@@ -72,10 +72,10 @@
   --brand-gradient:
     radial-gradient(
       90% 55% at 50% 118%,
-      #ffd34d 0%,
+      #d6bbfb 0%,
       var(--brand-yellow) 20%,
       var(--brand-orange) 45%,
-      rgba(223, 23, 23, 0) 78%
+      rgba(127, 86, 217, 0) 78%
     ),
     var(--brand);
   /* Hover de Button sunset: el sol sube desde debajo del borde y el texto queda sobre tinta y rojo. */
@@ -83,8 +83,8 @@
     ellipse 60% 65% at 50% 110%,
     var(--brand-yellow) 0%,
     var(--brand-orange) 38%,
-    rgb(223 23 23 / 0.9) 68%,
-    rgb(223 23 23 / 0) 100%
+    rgb(127 86 217 / 0.9) 68%,
+    rgb(127 86 217 / 0) 100%
   );
   /* Solo para superficies flotantes. */
   --shadow-soft:
@@ -97,12 +97,12 @@
   /* Geist y Geist Mono las sirve next/font (layout.tsx). La serif de los
      titulares es de pago y Reforma Digital tampoco la sirve: se ve Georgia. */
   --font-brand-text: var(
-    --font-geist,
+    --font-varita,
     "Helvetica Neue",
     Helvetica,
     Arial,
     sans-serif
   );
-  --font-brand-heading: "FFF Tool Serif Text", Georgia, serif;
-  --font-brand-mono: var(--font-geist-mono, ui-monospace, monospace);
+  --font-brand-heading: var(--font-varita, "Helvetica Neue", Arial, sans-serif);
+  --font-brand-mono: var(--font-varita-mono, ui-monospace, monospace);
 }

@@ -40,12 +40,12 @@ export default function Home() {
           {ficha.frase}
         </p>
         <h1 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
-          ¿Ese SMS o esa web es oficial de verdad?
+          Destapa el truco antes de pinchar.
         </h1>
         <p className="mt-6 text-lg text-(--text-secondary)">
-          Cada semana se suplanta a la DGT, a Hacienda o a Correos para robar
-          datos y dinero. Comprueba aquí el mensaje o el enlace antes de
-          confiar, y te decimos cuál es la web buena si no lo es.
+          Pega el SMS, el correo o el enlace que dice venir de Tráfico,
+          Hacienda, Correos u otro organismo. Te decimos si es la web
+          oficial y cuál es la buena.
         </p>
 
         {/* Qué hacemos, en tres pasos */}
@@ -118,7 +118,7 @@ export default function Home() {
       </main>
 
       <footer className="p-2">
-        <div className="flex flex-wrap items-center justify-between gap-6 rounded-[28px] px-(--page-gutter) py-12 [background:radial-gradient(80%_70%_at_50%_-12%,#ffe58f_0%,rgba(255,229,143,0)_70%),linear-gradient(180deg,#ffd34d_0%,var(--brand-yellow)_46%,var(--brand-orange)_100%)] md:px-12">
+        <div className="flex flex-wrap items-center justify-between gap-6 rounded-[28px] px-(--page-gutter) py-12 bg-[#f9f5ff] md:px-12">
           <p className="text-[15px]">
             Una pieza del squad{" "}
             <span className="font-mono">{ficha.equipo}</span> · Build night

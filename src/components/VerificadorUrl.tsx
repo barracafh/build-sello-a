@@ -137,7 +137,7 @@ export function VerificadorUrl() {
           disabled={cargando}
           className="h-12 justify-self-start px-6 text-base max-md:w-full"
         >
-          {cargando ? "Comprobando…" : "Comprobar"}
+          {cargando ? "Pasando la varita…" : "Pasar la varita"}
         </Button>
         <p className="text-[15px] text-(--text-secondary)">
           No abrimos ninguna dirección ni guardamos lo que pegas: solo leemos el
@@ -257,7 +257,7 @@ function WebOficial({ url, entidad }: { url?: string; entidad?: string }) {
   return (
     <Card
       render={<section />}
-      className="flex-row flex-wrap items-center justify-between gap-x-6 gap-y-4 px-6 py-6 text-base ring-0 [background:radial-gradient(120%_90%_at_100%_0%,#ffd34d_0%,rgba(255,211,77,0)_60%),var(--brand-yellow)]"
+      className="flex-row flex-wrap items-center justify-between gap-x-6 gap-y-4 px-6 py-6 text-base ring-0 [background:radial-gradient(120%_90%_at_100%_0%,#e9d7fe_0%,rgba(233,215,254,0)_60%),#f9f5ff]"
     >
       <div className="min-w-0 flex-[1_1_260px]">
         <p className="text-sm font-medium">La web oficial</p>

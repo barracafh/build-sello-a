@@ -1,15 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, Space_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { BannerInstalar } from "@/components/InstalarSello";
 import ficha from "../../ficha.json";
 import "./globals.css";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+const varita = Space_Grotesk({ subsets: ["latin"], variable: "--font-varita" });
 // Sin preload: solo la usan etiquetas y datos pequeños.
-const geistMono = Geist_Mono({
+const varitaMono = Space_Mono({
   subsets: ["latin"],
-  variable: "--font-geist-mono",
+  weight: ["400", "700"],
+  variable: "--font-varita-mono",
   preload: false,
 });
 
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
   description: ficha.frase,
   // Experimental: que no aparezca en buscadores como si fuera un servicio oficial.
   robots: { index: false, follow: false },
-  appleWebApp: { capable: true, title: "Sello", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Varita", statusBarStyle: "default" },
   icons: {
     icon: [
       {
@@ -39,7 +40,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="es" className={`${geist.variable} ${geistMono.variable}`}>
+    <html lang="es" className={`${varita.variable} ${varitaMono.variable}`}>
       <body>
         <a
           href="#contenido"
