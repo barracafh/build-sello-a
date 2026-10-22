@@ -5,6 +5,7 @@
 // no_determinable (SETUP.md). Nunca se abre nada de lo analizado.
 
 import lista from "../../datos/dominios-oficiales.json";
+import fuentesData from "../datos/fuentes.json";
 import { noDeterminable, verificarUrl, type Veredicto } from "./verificar-url";
 import {
   aludeEnlace,
@@ -22,14 +23,9 @@ import {
 } from "./remitente";
 import type { Source } from "@/components/Fuentes";
 
-const INCIBE_AVISOS: Source = {
-  nombre: "INCIBE · Avisos a la ciudadanía",
-  url: "https://www.incibe.es/ciudadania/avisos",
-};
-const INCIBE_017: Source = {
-  nombre: "INCIBE · Línea de Ayuda en Ciberseguridad 017",
-  url: "https://www.incibe.es/linea-de-ayuda-en-ciberseguridad",
-};
+const FUENTES_GENERICAS: Source[] = fuentesData.orden
+  .map((clave) => fuentesData.fuentes[clave as keyof typeof fuentesData.fuentes])
+  .filter(Boolean);
 
 export type EnlaceAnalizado = {
   neutralizado: string;
@@ -79,7 +75,7 @@ export function verificarMensaje(
   // Sin ninguna dirección, una frase como «pulse aquí» delata un enlace oculto.
   const frase = enlaces.length ? undefined : aludeEnlace(texto);
   const sinDireccion = enlaceOculto || !!frase;
-  const { concluyentes, avisos: senalesAviso } = patronesContenido(
+  const { concluyentes, avisos: senalesAviso, fuentes: fuentesSenales } = patronesContenido(
     texto,
     tipo,
     enlaces.length > 0 || sinDireccion,
@@ -122,7 +118,11 @@ export function verificarMensaje(
         : "Tiene un enlace escondido tras una palabra: no se ve adónde lleva, así que no lo puedo comprobar, pero cuenta como enlace.",
     );
   const avisos: string[] = [];
-  const fuentes: Source[] = [INCIBE_AVISOS, INCIBE_017];
+  // Fuentes genéricas más las de las señales que han disparado (sin repetir).
+  const fuentes: Source[] = [...FUENTES_GENERICAS];
+  for (const fuente of fuentesSenales) {
+    if (!fuentes.some((f) => f.url === fuente.url)) fuentes.push(fuente);
+  }
 
   const fraudeUrl = analizados.find(
     ({ resultado }) => !("error" in resultado) && resultado.veredicto === "no_oficial",
@@ -138,7 +138,7 @@ export function verificarMensaje(
     }
     pasos.push(
       `Enlace ${enlace} — ${resultado.titular.toLowerCase()}: ${resultado.pasos
-        .filter((p) => p.startsWith("Coincide") || p.startsWith("Es un subdominio") || p.startsWith("Empieza") || p.startsWith("Usa") || p.startsWith("Contiene") || p.startsWith("Termina") || p.startsWith("Es un acortador") || p.startsWith("No está en la lista") || p.startsWith("Lo que va antes") || p.startsWith("Es una dirección"))
+        .filter((p) => p.startsWith("Coincide") || p.startsWith("Es un subdominio") || p.startsWith("Empieza") || p.startsWith("Usa") || p.startsWith("Contiene") || p.startsWith("Termina") || p.startsWith("Es un acortador") || p.startsWith("No está en la lista") || p.startsWith("Lo que va antes") || p.startsWith("Es una dirección") || p.startsWith("Aparece"))
         .join(" ") || resultado.motivo}`,
     );
     if (!("error" in resultado)) avisos.push(...resultado.avisos);

@@ -1,0 +1,17 @@
+{
+  "comentario": "Marcas que suplantan las campañas publicadas (contexto.md, 5.2 paso 10). Clave: token tal como aparece escrito dentro de un dominio ajeno, en minúsculas y sin acentos (p. ej. 'dgt', 'seg-social'). Valor: nombre EXACTO de la entidad en datos/dominios-oficiales.json o en dominios-extra.json, para poder mostrar su web oficial. Se detecta la marca como etiqueta o trozo entre guiones del host, o a distancia de edición ≤ 2 si la marca tiene 6 letras o más; las cortas, solo exactas. Si añades una entidad nueva a la allowlist, añade aquí los tokens por los que la gente la escribe en dominios falsos.",
+  "marcas": {
+    "agenciatributaria": "Agencia Tributaria (AEAT)",
+    "aeat": "Agencia Tributaria (AEAT)",
+    "hacienda": "Agencia Tributaria (AEAT)",
+    "dgt": "Dirección General de Tráfico (DGT)",
+    "seg-social": "Seguridad Social (INSS / TGSS)",
+    "segsocial": "Seguridad Social (INSS / TGSS)",
+    "seguridadsocial": "Seguridad Social (INSS / TGSS)",
+    "sepe": "Servicio Público de Empleo Estatal (SEPE)",
+    "correos": "Correos",
+    "clave": "Cl@ve (identificación electrónica)",
+    "carpetaciudadana": "Mi Carpeta Ciudadana (Estado)",
+    "dehu": "DEHú (Dirección Electrónica Habilitada única) – notificaciones"
+  }
+}

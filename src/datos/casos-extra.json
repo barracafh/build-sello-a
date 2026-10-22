@@ -1,0 +1,75 @@
+{
+  "comentario": "Casos de prueba del EQUIPO, con el MISMO esquema que datos/mensajes-ejemplo.json (material de la organización, no editar): id, tipo ('web' | 'sms' | 'email'), texto, esperado ('oficial_verificado' | 'no_oficial' | 'no_determinable') y, opcionales: url, texto_adicional_mismo_aviso, url_prueba_sintetica, url_defanged. Los de aquí se suman a los 10 de la organización en scripts/probar-mensajes.ts y en tests/verificador.test.ts (bun test). Reglas para tus ejemplos: URL sintéticas e inventadas y neutralizadas (hxxps://…[.]top), nunca reales; nada de datos personales. AÑADIR UN CASO NUEVO: añade un objeto a 'casos' y comprueba con `bun scripts/probar-mensajes.ts` que sale el veredicto esperado.",
+  "casos": [
+    {
+      "id": "EX01",
+      "tipo": "web",
+      "texto": "sede.dgt.gob.es",
+      "url": "https://sede.dgt.gob.es",
+      "url_prueba_sintetica": null,
+      "url_defanged": null,
+      "esperado": "oficial_verificado",
+      "pistas": "Sede electrónica de la DGT, dominio de la lista."
+    },
+    {
+      "id": "EX02",
+      "tipo": "web",
+      "texto": "hxxps://dgt.es.multas-pago[.]com",
+      "url": "hxxps://dgt.es.multas-pago[.]com",
+      "url_prueba_sintetica": null,
+      "url_defanged": null,
+      "esperado": "no_oficial",
+      "pistas": "Trampa de dominio: empieza por dgt.es pero el dominio real es multas-pago.com."
+    },
+    {
+      "id": "EX03",
+      "tipo": "web",
+      "texto": "hxxps://agenciatributaria-devolucion[.]top",
+      "url": "hxxps://agenciatributaria-devolucion[.]top",
+      "url_prueba_sintetica": null,
+      "url_defanged": null,
+      "esperado": "no_oficial",
+      "pistas": "Marca de la AEAT en un dominio ajeno, con TLD .top."
+    },
+    {
+      "id": "EX04",
+      "tipo": "web",
+      "texto": "https://mi-pueblo-ejemplo.com",
+      "url": "https://mi-pueblo-ejemplo.com",
+      "url_prueba_sintetica": null,
+      "url_defanged": null,
+      "esperado": "no_determinable",
+      "pistas": "Podría ser el ayuntamiento de un pueblo: dominio desconocido, sin señales de fraude."
+    },
+    {
+      "id": "EX05",
+      "tipo": "sms",
+      "texto": "HACIENDA: Regularice su deuda realizando una transferencia al ES12 1234 1234 1234 1234 en las proximas 24 horas.",
+      "esperado": "no_oficial",
+      "pistas": "Pide una transferencia a una cuenta IBAN: ninguna administracion cobra asi por mensaje (transferencia_o_bizum)."
+    },
+    {
+      "id": "EX06",
+      "tipo": "email",
+      "texto": "SEPE: Verifique su identidad introduciendo su dni y contrasena en hxxps://sepe-actualizacion[.]top antes de que su prestacion sea suspendida.",
+      "url_prueba_sintetica": null,
+      "url_defanged": null,
+      "esperado": "no_oficial",
+      "pistas": "Pide DNI y contrasena en un enlace: el gancho clasico del phishing (pide_datos_personales)."
+    },
+    {
+      "id": "EX07",
+      "tipo": "sms",
+      "texto": "Ha ganado un premio de 3.000 euros. Responda a este mensaje para reclamarlo.",
+      "esperado": "no_determinable",
+      "pistas": "Habla de un premio sin mas senales: aviso, no acusacion (premio)."
+    },
+    {
+      "id": "EX08",
+      "tipo": "sms",
+      "texto": "De 612 345 678: su paquete esta retenido, pague los gastos de aduana para recibirlo hoy mismo.",
+      "esperado": "no_determinable",
+      "pistas": "Patron de Correos falsa y remitente con numero de movil: dos avisos, sin conclusion (paquete_retenido, remitente_movil)."
+    }
+  ]
+}

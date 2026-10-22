@@ -1,0 +1,9 @@
+{
+  "comentario": "Plataformas de sede electrónica compartidas por muchas administraciones (contexto.md, 5.2 paso 6; comun/04b). Cualquiera de sus subdominios resuelve por comodín, así que un inquilino solo es oficial si consta en la lista de dominios. Si el host termina en una de estas bases, el veredicto es no_determinable con motivo plataforma_compartida. Añade la base de la plataforma (dominio completo, no un registrable parcial).",
+  "bases": [
+    "sede.gob.es",
+    "sedelectronica.es",
+    "sedipualba.es",
+    "sede.dival.es"
+  ]
+}

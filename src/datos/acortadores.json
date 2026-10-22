@@ -1,0 +1,10 @@
+{
+  "comentario": "Acortadores de enlaces que el verificador reconoce. Si el host (sin www.) está aquí, el veredicto es no_determinable con motivo acortador_no_resuelto: no se abre el enlace ni se expande (SETUP.md). Añade el dominio tal cual (sin www.); se comparan etiqueta a etiqueta, exacto.",
+  "dominios": [
+    "bit.ly", "bitly.com", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "is.gd",
+    "v.gd", "x.gd", "buff.ly", "cutt.ly", "rebrand.ly", "shorturl.at", "s.id",
+    "t.ly", "rb.gy", "tiny.cc", "lnkd.in", "qrco.de", "short.gy", "bl.ink",
+    "acortar.link", "urlz.fr", "ln.run", "bit.do", "u.to", "cli.re",
+    "l.ead.me", "shorturl.gg", "spoo.me", "tinu.be", "rebrandly.com"
+  ]
+}

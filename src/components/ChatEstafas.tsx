@@ -292,7 +292,7 @@ async function analizar(
   );
 }
 
-export function ChatEstafas() {
+export function ChatEstafas({ textoInicial }: { textoInicial?: string }) {
   const [mensajes, setMensajes] = useState<Mensaje[]>([SALUDO]);
   const [texto, setTexto] = useState("");
   const [ocultos, setOcultos] = useState<Enlace[]>([]);
@@ -303,6 +303,18 @@ export function ChatEstafas() {
   const siguienteId = useRef(1);
   const historial = useRef<HTMLDivElement>(null);
   const caja = useRef<HTMLTextAreaElement>(null);
+
+  // Texto que llega compartido (share_target de Android o ?text=): se añade
+  // como mensaje del ciudadano y se analiza al montar, una sola vez.
+  const inicialEnviado = useRef(false);
+  useEffect(() => {
+    const valor = textoInicial?.trim();
+    if (!valor || inicialEnviado.current || cargando) return;
+    inicialEnviado.current = true;
+    enviar(undefined, valor);
+    // Solo al montar: el texto compartido no cambia durante la vida del chat.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Baja al último mensaje dentro del recuadro, sin mover la página.
   useEffect(() => {

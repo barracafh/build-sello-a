@@ -1,0 +1,14 @@
+{
+  "comentario": "Extensiones baratas o exóticas de las campañas publicadas (contexto.md, 1.4). Son señal, no veredicto: solas no concluyen, pero acompañan a una imitación de marca (paso 10) y generan el aviso de abajo (el {sufijo} se sustituye por las dos últimas etiquetas del host, neutralizadas).",
+  "tlds": [
+    "top",
+    "click",
+    "help",
+    "cfd",
+    "clik"
+  ],
+  "sufijos": [
+    "eu.cc"
+  ],
+  "aviso": "Termina en {sufijo}, una extensión barata o exótica que INCIBE ha visto en campañas de fraude."
+}

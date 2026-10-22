@@ -1,0 +1,11 @@
+{
+  "comentario": "Dominios oficiales que añade el EQUIPO, con el MISMO esquema que cada entidad de datos/dominios-oficiales.json (material de la organización, no editar): entidad (nombre exacto, es como se muestra al ciudadano), dominios (lista), web_oficial, fuente (página oficial que respalda esos dominios) y, opcionales: fuente_adicional, nota, verificado. Los de aquí se suman a la lista de la organización al arrancar; gana la coincidencia más concreta, igual que en la lista base. AÑADIR UN DOMINIO OFICIAL NUEVO: copia el objeto de 'ejemplo' a 'entidades', cámbialo por los datos reales y verifica la fuente. Mientras esté en 'ejemplo' NO se usa. Si la entidad nueva puede ser suplantada, añade también sus marcas en marcas.json y sus patrones en organismos.json.",
+  "ejemplo": {
+    "entidad": "Banco de España",
+    "dominios": ["bde.es", "sede.bde.es"],
+    "web_oficial": "https://sede.bde.es",
+    "fuente": "https://www.bde.es/wbe/es/banco-de-espana/",
+    "nota": "EJEMPLO DE FORMATO, no activo: comprueba la fuente antes de moverlo a 'entidades'."
+  },
+  "entidades": []
+}
