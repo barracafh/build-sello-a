@@ -76,6 +76,10 @@ const lista = {
   entidades: [...listaBase.entidades, ...(dominiosExtra.entidades as Entidad[])],
 };
 
+// La lista fusionada (organización + equipo), por si otro módulo necesita
+// contarla o describirla: lo usa /api/health.
+export const LISTA_DOMINIOS = lista;
+
 // Letras de otros alfabetos que se confunden con las latinas (UTS #39, mínimo).
 const CONFUSABLES: Record<string, string> = {
   а: "a", е: "e", о: "o", р: "p", с: "c", х: "x", у: "y", і: "i", ј: "j",

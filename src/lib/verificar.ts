@@ -4,6 +4,7 @@
 // /api/verificar-mensaje) llaman a esta función, así que el comportamiento es
 // el mismo por cualquier puerta.
 import { lookup } from "node:dns/promises";
+import type { LookupOptions } from "node:dns";
 import {
   noDeterminable,
   verificarEnlaces,
@@ -12,6 +13,7 @@ import {
   type Resultado,
 } from "./verificar-url";
 import { verificarMensaje } from "./verificar-mensaje";
+import { marcarDnsDegradado } from "./providers";
 
 export type TipoEntrada = "url" | "web" | "sms" | "email";
 
@@ -36,6 +38,9 @@ export type RespuestaVerificacion = { status: number; cuerpo: object };
 // Solo para mensajes: lo que se sabe de una captura de pantalla (un enlace
 // cuya dirección no se ve y quién envía el mensaje).
 export type OpcionesMensaje = { enlaceOculto?: boolean; remitente?: string };
+
+export const esErrorVerificacion = (c: object): c is { error: string } =>
+  "error" in c;
 
 export async function verificar(
   entrada: string,
@@ -69,8 +74,11 @@ export async function verificarListaEnlaces(
       resultado: await conDns(e.resultado),
     })),
   );
-  // La regla .gob.es puede haber cambiado algún veredicto: se recalcula el peor.
-  const bajado = verificados.some((e) => e.resultado.motivo === "gob_es_inexistente");
+  // La regla .gob.es puede haber cambiado algún veredicto (host inexistente o
+  // DNS sin confirmar): se recalcula el peor.
+  const bajado = verificados.some((e) =>
+    ["gob_es_inexistente", "gob_es_dns_no_confirmado"].includes(e.resultado.motivo),
+  );
   return {
     status: 200,
     cuerpo: {
@@ -89,25 +97,82 @@ export async function verificarListaEnlaces(
 // web, y estos dominios solo los registran administraciones.
 async function conDns(resultado: Resultado) {
   const { host, requiereDns, ...respuesta } = resultado;
-  if (!requiereDns || !host || (await existe(host))) return respuesta;
+  if (!requiereDns || !host) return respuesta;
+  const estado = await existe(host);
+  if (estado === "existe") return respuesta;
+
+  if (estado === "no_existe")
+    return {
+      ...respuesta,
+      veredicto: "no_determinable" as const,
+      motivo: "gob_es_inexistente",
+      titular: "No he podido confirmar que sea oficial",
+      consejo: noDeterminable(),
+      pasos: [
+        ...respuesta.pasos,
+        "Pero esa dirección no existe: no la deduzcas, búscala desde la web del organismo.",
+      ],
+    };
+
+  // DNS sin confirmar (expiró o falló): no se puede afirmar ni negar que el
+  // host exista, así que se degrada a no_determinable con un motivo claro y
+  // se marca el provider para que /api/health lo refleje. Nunca cuelga ni
+  // lanza 500 (src/lib/api.ts lo envuelve todo; aquí la consulta tiene
+  // techo de tiempo). No se marca degradado cuando el DNS respondió que el
+  // host no existe: eso es una respuesta válida, no un fallo.
+  marcarDnsDegradado();
   return {
     ...respuesta,
     veredicto: "no_determinable" as const,
-    motivo: "gob_es_inexistente",
+    motivo: "gob_es_dns_no_confirmado",
     titular: "No he podido confirmar que sea oficial",
     consejo: noDeterminable(),
     pasos: [
       ...respuesta.pasos,
-      "Pero esa dirección no existe: no la deduzcas, búscala desde la web del organismo.",
+      "No he podido comprobar en DNS que exista: entra tú tecleando la web oficial del organismo.",
     ],
   };
 }
 
-async function existe(host: string) {
-  const limite = new Promise<false>((r) => setTimeout(() => r(false), 2000));
-  const consulta = lookup(host).then(
-    () => true,
-    () => false,
-  );
-  return Promise.race([consulta, limite]);
+// ---- Consulta DNS con techo de tiempo -----------------------------------
+// AbortSignal.timeout corta la consulta si tarda más de DNS_TIMEOUT_MS. Para
+// que no dependa solo de que la consulta respete la señal, Promise.race con
+// un temporizador deja listo el resultado aunque la consulta se cuelgue: la
+// petición nunca espera más de DNS_TIMEOUT_MS + un margen mínimo.
+
+export const ajustesDns = {
+  timeoutMs: 2000,
+  // Sustituible en los tests; en producción es la lookup estándar, que no
+  // abre ninguna conexión a la web analizada: solo pregunta por su nombre.
+  // El AbortSignal corta la consulta; LookupOptions en @types/node aún no
+  // declara signal (el runtime sí lo acepta, Node ≥ 16.7), por eso el cast.
+  consulta: (host: string, senal: AbortSignal) =>
+    lookup(host, { signal: senal } as LookupOptions),
+};
+
+type EstadoDns = "existe" | "no_existe" | "sin_confirmar";
+
+// ENOTFOUND es el DNS respondiendo «este nombre no existe». Cualquier otro
+// fallo (red, expiración, servidor caído) no prueba nada: sin_confirmar.
+const esInexistente = (e: unknown) =>
+  typeof e === "object" && e !== null && (e as { code?: string }).code === "ENOTFOUND";
+
+async function existe(host: string): Promise<EstadoDns> {
+  const { timeoutMs, consulta } = ajustesDns;
+  let despejar = () => {};
+  const temporizador = new Promise<"sin_confirmar">((resolver) => {
+    const t = setTimeout(() => resolver("sin_confirmar"), timeoutMs + 250);
+    despejar = () => clearTimeout(t);
+  });
+  try {
+    return await Promise.race([
+      consulta(host, AbortSignal.timeout(timeoutMs)).then(
+        () => "existe" as const,
+        (e: unknown) => (esInexistente(e) ? ("no_existe" as const) : ("sin_confirmar" as const)),
+      ),
+      temporizador,
+    ]);
+  } finally {
+    despejar();
+  }
 }
