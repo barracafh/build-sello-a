@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
+import { BannerInstalar } from "@/components/InstalarSello";
 import ficha from "../../ficha.json";
 import "./globals.css";
 
@@ -17,6 +18,23 @@ export const metadata: Metadata = {
   description: ficha.frase,
   // Experimental: que no aparezca en buscadores como si fuera un servicio oficial.
   robots: { index: false, follow: false },
+  appleWebApp: { capable: true, title: "Sello", statusBarStyle: "default" },
+  icons: {
+    icon: [
+      {
+        url: `${process.env.NEXT_PUBLIC_BASE_PATH}/icon-192.png`,
+        type: "image/png",
+        sizes: "192x192",
+      },
+    ],
+    apple: `${process.env.NEXT_PUBLIC_BASE_PATH}/apple-touch-icon.png`,
+  },
+};
+
+// Barra del sistema en blanco, como el fondo de la app (Sol, sin modo oscuro).
+// El link rel=manifest lo añade Next solo por existir src/app/manifest.ts.
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -36,6 +54,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Herramienta experimental. No es un servicio oficial.
         </p>
         {children}
+        <BannerInstalar />
       </body>
     </html>
   );
