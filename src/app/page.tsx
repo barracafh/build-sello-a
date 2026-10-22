@@ -1,6 +1,6 @@
 import { Cabecera } from "@/components/Cabecera";
-import { Cejilla } from "@/components/Cejilla";
 import { ComprobarAhora } from "@/components/ComprobarAhora";
+import { HeroVortice } from "@/components/HeroVortice";
 import { AyudaCompartirIos } from "@/components/InstalarSello";
 import { ChatEstafas } from "@/components/ChatEstafas";
 import { ComoFuncionaVarita } from "@/components/PasosVarita";
@@ -15,12 +15,10 @@ export default function Home() {
       <Cabecera />
 
       <main id="contenido" tabIndex={-1} className="outline-none">
+        <HeroVortice />
+
         <div className="mx-auto max-w-[760px] px-(--page-gutter) pt-10 pb-4 md:pt-14">
-        <Cejilla>Experimental · No es un servicio oficial</Cejilla>
-        <h1 className="mt-3 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
-          Destapa el truco antes de pinchar.
-        </h1>
-        <p className="mt-6 text-lg text-(--text-secondary)">
+        <p className="text-lg text-(--text-secondary)">
           Pega el SMS, el correo o el enlace que dice venir de Tráfico,
           Hacienda, Correos u otro organismo, sube una captura de pantalla o
           reenvíanoslo por WhatsApp o Telegram. Te decimos si es la web oficial
