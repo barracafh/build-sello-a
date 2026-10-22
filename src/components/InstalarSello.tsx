@@ -44,11 +44,11 @@ export function BannerInstalar() {
     <div className="fixed inset-x-3 bottom-3 z-40 md:inset-x-auto md:right-6 md:bottom-6 md:w-[420px]">
       <Card
         render={<aside />}
-        aria-label="Instalar Sello"
+        aria-label="Instalar Varita"
         className="flex-row flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4 text-base shadow-(--shadow-overlay)"
       >
         <p className="min-w-0 flex-[1_1_200px] text-[15px] leading-snug">
-          Instala Sello para compartir desde tus mensajes
+          Instala Varita en tu móvil para compartir desde tus mensajes
         </p>
         <div className="flex gap-2">
           <Button
@@ -105,7 +105,7 @@ export function AyudaCompartirIos() {
       className="mt-8 grid gap-4 px-6 py-6 text-base ring-0 bg-muted"
     >
       <h2 className="text-lg leading-snug font-medium">
-        ¿Te ha llegado en un iPhone? Comparte con Sello copiando el mensaje
+        ¿Te ha llegado en un iPhone? Comparte con Varita copiando el mensaje
       </h2>
       <ol className="grid gap-3">
         {pasos.map(({ icono: Icono, texto }, i) => (
