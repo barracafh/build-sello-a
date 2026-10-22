@@ -3,6 +3,8 @@
 // Pasos de contexto.md, apartado 5.2, sin la PSL completa ni el TLS.
 import { domainToUnicode } from "node:url";
 import lista from "../../datos/dominios-oficiales.json";
+import { INDICADORES } from "../datos/indicadores";
+import { FUENTE_INQUILINOS, INQUILINOS } from "../datos/inquilinos";
 import fraudes from "../datos/dominios-fraude.json";
 import type { Source } from "@/components/Fuentes";
 
@@ -51,8 +53,18 @@ const ACORTADORES = new Set([
   "acortar.link", "urlz.fr",
 ]);
 
+// TLD baratos o exóticos de las campañas publicadas (contexto.md, 1.4). Son
+// señal, no veredicto: solos no concluyen, pero acompañan a una imitación de
+// marca (paso 10).
+const TLD_BARATOS = new Set(["top", "click", "help", "cfd", "clik"]);
+const tldExotico = (host: string) => {
+  const tld = host.split(".").at(-1) ?? "";
+  return TLD_BARATOS.has(tld) || host.endsWith(".eu.cc");
+};
+
 // Plataformas con comodín: cualquiera de sus subdominios resuelve, así que el
-// inquilino tiene que constar en una lista (comun/04b). No lo damos por oficial.
+// inquilino tiene que constar en una lista (src/datos/inquilinos.ts, de
+// comun/04b). No lo damos por oficial sin constancia.
 const PLATAFORMAS = ["sede.gob.es", "sedelectronica.es", "sedipualba.es", "sede.dival.es"];
 
 // Marcas que suplantan las campañas publicadas (contexto.md, 5.2 paso 10).
@@ -139,11 +151,33 @@ function marcaImitada(host: string) {
   }
 }
 
+// Esqueleto UTS #39 (mínimo): NFD, quitar diacríticos y mapear confusables.
+const esqueletoUts39 = (t: string) =>
+  t
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .split("")
+    .map((c) => CONFUSABLES[c] ?? c)
+    .join("");
+
 function homografo(host: string) {
   if (!host.includes("xn--")) return;
-  const esqueleto = [...domainToUnicode(host)].map((c) => CONFUSABLES[c] ?? c).join("");
-  if (esqueleto === host) return;
-  return dominios.find(({ dominio }) => termina(esqueleto, dominio));
+  const unicode = domainToUnicode(host);
+  const esqueleto = esqueletoUts39(unicode);
+  if (esqueleto === unicode) return;
+  // ¿El esqueleto acaba en un dominio de la lista? (homógrafo directo)
+  const directa = dominios.find(({ dominio }) => termina(esqueleto, dominio));
+  if (directa) return directa;
+  // ¿Una etiqueta es un homógrafo de la marca de un dominio de la lista?
+  // (xn--dgt-9ua → «dgtķ» → esqueleto «dgtk», a distancia 1 de «dgt»). Solo
+  // punycode: un ñ o ç ASCII legítimo no pasa por aquí (contexto.md, 1.4).
+  for (const etiqueta of esqueleto.split(".")) {
+    for (const { dominio, entidad } of dominios) {
+      const marca = dominio.split(".")[0];
+      if (marca.length >= 3 && distancia(etiqueta, marca) <= 1)
+        return { dominio, entidad };
+    }
+  }
 }
 
 export const noDeterminable = (organismo = "del organismo") =>
@@ -172,10 +206,10 @@ export function verificarUrl(texto: string): Resultado | { error: string } {
   ];
   const avisos: string[] = [];
   if (url.port) avisos.push(`Usa un puerto poco habitual (${url.port}).`);
-  const tld = host.split(".").at(-1);
-  if (tld === "top" || tld === "click")
+  const exotico = tldExotico(host);
+  if (exotico)
     avisos.push(
-      `Termina en .${tld}, una extensión barata que INCIBE ha visto en SMS falsos de la Agencia Tributaria.`,
+      `Termina en ${neutralizar(host.split(".").slice(-2).join("."))}, una extensión barata o exótica que INCIBE ha visto en campañas de fraude.`,
     );
   const base = { urlNeutralizada, pasos, avisos };
 
@@ -227,9 +261,25 @@ export function verificarUrl(texto: string): Resultado | { error: string } {
       parecido.entidad,
     );
 
-  // Paso 6: plataformas con comodín.
+  // Paso 6: plataformas con comodín. Si el inquilino consta en la lista
+  // (04b), es oficial; si no, no se concluye nada.
   const plataforma = PLATAFORMAS.find((p) => host.endsWith(`.${p}`));
   if (plataforma) {
+    const inquilino = INQUILINOS.find((i) => i.host === host);
+    if (inquilino) {
+      pasos.push(
+        `Coincide con la sede de ${inquilino.entidad} en ${neutralizar(plataforma)}, una plataforma compartida cuyo inquilino consta en la lista de entidades adheridas.`,
+      );
+      return {
+        ...base,
+        veredicto: "oficial_verificado",
+        motivo: "inquilino_en_allowlist",
+        titular: `Es una sede oficial de ${inquilino.entidad}`,
+        entidad: inquilino.entidad,
+        webOficial: `https://${inquilino.host}`,
+        fuentes: [FUENTE_INQUILINOS],
+      };
+    }
     pasos.push(
       `Está alojado en ${neutralizar(plataforma)}, una plataforma que comparten muchas administraciones; este inquilino no está en la lista.`,
     );
@@ -301,14 +351,57 @@ export function verificarUrl(texto: string): Resultado | { error: string } {
     };
   }
 
-  // Paso 10: la marca de un organismo en un dominio que no es suyo.
+  // Paso 10: la marca de un organismo en un dominio que no es suyo. La
+  // semejanza sola no concluye (§5.2.10): hace falta otra señal independiente
+  // (TLD barato o punycode). Sin ella, no_determinable con aviso, para no
+  // acusar, por ejemplo, a ugt.es o cgt.es.
   const marca = marcaImitada(host);
-  if (marca)
+  if (marca && exotico)
     return fraude(
       "imitacion_de_marca",
-      `Usa el nombre «${marca.marca}», pero ${neutralizar(host)} no es un dominio de ${marca.entidad}.`,
+      `Usa el nombre «${marca.marca}» en un dominio que no es de ${marca.entidad}, y encima termina en una extensión barata típica de fraude.`,
       porNombre(marca.entidad),
     );
+  if (marca && host.includes("xn--"))
+    return fraude(
+      "homografo",
+      `Usa letras de otro alfabeto para parecerse al dominio de ${marca.entidad}.`,
+      porNombre(marca.entidad),
+    );
+  if (marca) {
+    pasos.push(
+      `Contiene el nombre «${marca.marca}», pero ${neutralizar(host)} no es un dominio de ${marca.entidad}. No encuentro otra señal, así que no concluyo: puede ser una imitación o una web legítima de otra índole.`,
+    );
+    avisos.push(
+      `Parecido al dominio de ${marca.entidad} (posible_imitacion_de_marca). Entra tecleando la web oficial de abajo, nunca desde este enlace.`,
+    );
+  }
+
+  // Paso 11: dominios publicados expresamente como fraudulentos por una
+  // fuente oficial (copia local fechada, src/datos/indicadores.ts). Solo si no
+  // hubo coincidencia en los pasos 7-8, y solo dominios calificados como
+  // fraudulentos: una mención de un dominio oficial en el aviso no cuenta.
+  const indicador = INDICADORES.find(
+    (i) => host === i.dominio || host.endsWith(`.${i.dominio}`),
+  );
+  if (indicador) {
+    pasos.push(
+      `Contiene un dominio que ${indicador.fuenteNombre} ha publicado como fraudulento (consultado el ${indicador.fecha}).`,
+    );
+    return {
+      ...base,
+      veredicto: "no_oficial",
+      motivo: "aviso_incibe",
+      titular: `No es oficial: suplanta a ${indicador.organismo}`,
+      entidad: indicador.organismo,
+      webOficial: porNombre(indicador.organismo)?.web_oficial,
+      fuentes: [
+        { nombre: indicador.fuenteNombre, url: indicador.fuenteUrl },
+        INCIBE_AVISOS,
+        INCIBE_017,
+      ],
+    };
+  }
 
   // Paso 11: lista comunitaria de phishing activo, actualizada cada día. Va
   // después de la lista oficial: solo puede decir «no oficial», nunca «oficial».
