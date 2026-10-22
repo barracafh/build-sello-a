@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Fuentes, type Source } from "@/components/Fuentes";
 import { ruta } from "@/config/sitio";
-import fraudes from "@/datos/dominios-fraude.json";
+import { ComoComprobamos } from "@/components/ComoComprobamos";
 
 type Veredicto = "oficial_verificado" | "no_oficial" | "no_determinable";
 type Resultado = {
@@ -23,7 +23,7 @@ type Resultado = {
   webOficial?: string;
   fuentes: Source[];
 };
-type Enlace = { texto: string; href: string };
+export type Enlace = { texto: string; href: string };
 type ResultadoEnlaces = {
   veredicto: Veredicto;
   titular: string;
@@ -54,7 +54,7 @@ const EJEMPLOS: { etiqueta: string; texto: string; enlaces?: Enlace[] }[] = [
 
 // Del HTML que guarda el portapapeles al copiar un correo, cada enlace con su
 // texto visible. DOMParser no carga imágenes ni ejecuta scripts.
-function enlacesDe(html: string): Enlace[] {
+export function enlacesDe(html: string): Enlace[] {
   const doc = new DOMParser().parseFromString(html, "text/html");
   return [...doc.querySelectorAll<HTMLAnchorElement | HTMLAreaElement>("a[href], area[href]")]
     .map((a) => ({
@@ -156,41 +156,7 @@ export function VerificadorUrl() {
             </li>
           </ul>
         </details>
-        {/* Resumen de src/datos/FUENTES.md: qué fuente puede decir qué. */}
-        <details className="text-[15px]">
-          <summary className="cursor-pointer font-medium">
-            ¿Cómo lo comprobamos?
-          </summary>
-          <ol className="mt-2 grid gap-1 pl-5 [list-style:decimal]">
-            <li>
-              <strong className="font-medium">Lista oficial.</strong> Cada
-              dominio está respaldado por la web del propio organismo. Es lo
-              único que nos permite decir «oficial» y de quién.
-            </li>
-            <li>
-              <strong className="font-medium">Dominios .gob.es.</strong> Por
-              norma, solo los registran administraciones. Comprobamos además
-              que la dirección existe.
-            </li>
-            <li>
-              <strong className="font-medium">Señales de fraude.</strong> Las
-              trampas que publica INCIBE: el nombre de un organismo en un
-              dominio ajeno, letras de otro alfabeto, direcciones disfrazadas.
-            </li>
-            <li>
-              <strong className="font-medium">Lista de phishing activo.</strong>{" "}
-              {fraudes.dominios.length} dominios que imitan a organismos
-              españoles, de {fraudes.origen} (lista comunitaria, se actualiza
-              cada día
-              {fraudes.actualizado &&
-                `; última, ${new Date(fraudes.actualizado).toLocaleDateString("es-ES", { timeZone: "UTC" })}`}
-              ). Solo sirve para decir «no oficial», nunca «oficial».
-            </li>
-          </ol>
-          <p className="mt-2 text-(--text-secondary)">
-            Si nada de esto lo confirma, te lo decimos: no podemos asegurarlo.
-          </p>
-        </details>
+        <ComoComprobamos />
         <div className="flex flex-wrap items-center gap-2 text-[15px]">
           <span className="text-(--text-secondary)">Prueba con:</span>
           {EJEMPLOS.map((ejemplo) => (
