@@ -10,14 +10,14 @@ import ficha from "../../ficha.json";
 // antes de usarla.
 const QUE_HACEMOS = [
   {
-    titulo: "Pegas lo que has recibido",
+    titulo: "Nos pasas lo que has recibido",
     detalle:
-      "Un SMS, un correo o la dirección de una web que dice venir de la DGT, Hacienda, la Seguridad Social, Correos u otro organismo.",
+      "Un SMS, un correo, la dirección de una web o una captura de pantalla que dice venir de la DGT, Hacienda, la Seguridad Social, Correos u otro organismo. Pégalo aquí o reenvíanoslo por WhatsApp.",
   },
   {
     titulo: "Lo leemos solo como texto",
     detalle:
-      "Nunca abrimos los enlaces, no seguimos redirecciones y no guardamos nada de lo que pegas. Comparamos con listas oficiales y con los patrones de fraude que publica INCIBE.",
+      "De una captura sacamos el texto, el remitente y los enlaces escondidos con un modelo de IA. Nunca abrimos los enlaces, no seguimos redirecciones y no guardamos nada de lo que nos mandas. Comparamos con listas oficiales y con los patrones de fraude que publica INCIBE.",
   },
   {
     titulo: "Te decimos la verdad que sabemos",
@@ -44,8 +44,9 @@ export default function Home() {
         </h1>
         <p className="mt-6 text-lg text-(--text-secondary)">
           Pega el SMS, el correo o el enlace que dice venir de Tráfico,
-          Hacienda, Correos u otro organismo. Te decimos si es la web
-          oficial y cuál es la buena.
+          Hacienda, Correos u otro organismo, sube una captura de pantalla o
+          reenvíanoslo por WhatsApp. Te decimos si es la web oficial y cuál es
+          la buena.
         </p>
 
         {/* Qué hacemos, en tres pasos */}
