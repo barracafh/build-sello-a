@@ -10,8 +10,11 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Sello",
     description: ficha.frase,
     lang: "es",
-    start_url: `${base}/`,
-    scope: `${base}/`,
+    // Sin barra final: el alojamiento sirve la app en /<equipo> y /<equipo>/
+    // responde 404, así que la app instalada abriría en un 404. El scope sin
+    // barra también cubre /<equipo>/… porque la coincidencia es por prefijo.
+    start_url: `${base}`,
+    scope: `${base}`,
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#ffffff",
