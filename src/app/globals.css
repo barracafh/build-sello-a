@@ -15,9 +15,10 @@
     font-synthesis: none;
   }
 
+  /* Varita DS: titulares en negrita, como en el diseño. */
   h1,
   h2 {
-    @apply font-heading font-normal;
+    @apply font-heading font-bold;
   }
 
   :is(h1, h2, h3, h4, dt) {

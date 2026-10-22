@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cabecera } from "@/components/Cabecera";
+import { PieVarita } from "@/components/PieVarita";
 import { Compartir } from "@/components/Compartir";
 import { AyudaCompartirIos } from "@/components/InstalarSello";
 import ficha from "../../../ficha.json";
@@ -51,6 +52,8 @@ export default async function PaginaCompartir({
 
         <AyudaCompartirIos />
       </main>
+
+      <PieVarita />
     </>
   );
 }

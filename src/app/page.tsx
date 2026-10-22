@@ -1,8 +1,10 @@
-import { BotonAviso } from "@/components/BotonAviso";
 import { Cabecera } from "@/components/Cabecera";
+import { ComprobarAhora } from "@/components/ComprobarAhora";
 import { AyudaCompartirIos } from "@/components/InstalarSello";
 import { ChatEstafas } from "@/components/ChatEstafas";
 import { Pestanas } from "@/components/Pestanas";
+import { PieVarita } from "@/components/PieVarita";
+import { PorQueVarita } from "@/components/PorQueVarita";
 import { VerificadorUrl } from "@/components/VerificadorUrl";
 import ficha from "../../ficha.json";
 
@@ -31,11 +33,8 @@ export default function Home() {
     <>
       <Cabecera />
 
-      <main
-        id="contenido"
-        tabIndex={-1}
-        className="mx-auto max-w-[760px] px-(--page-gutter) pt-10 pb-20 outline-none md:pt-14"
-      >
+      <main id="contenido" tabIndex={-1} className="outline-none">
+        <div className="mx-auto max-w-[760px] px-(--page-gutter) pt-10 pb-20 md:pt-14">
         <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
           {ficha.frase}
         </p>
@@ -69,7 +68,7 @@ export default function Home() {
           ))}
         </ol>
 
-        <div className="mt-12">
+        <div id="comprobar" className="mt-12 scroll-mt-6">
           <Pestanas
             pestanas={[
               {
@@ -116,17 +115,13 @@ export default function Home() {
         </div>
 
         <AyudaCompartirIos />
+        </div>
+
+        <PorQueVarita />
+        <ComprobarAhora enPortada />
       </main>
 
-      <footer className="p-2">
-        <div className="flex flex-wrap items-center justify-between gap-6 rounded-[28px] px-(--page-gutter) py-12 bg-[#f9f5ff] md:px-12">
-          <p className="text-[15px]">
-            Una pieza del squad{" "}
-            <span className="font-mono">{ficha.equipo}</span> · Build night
-          </p>
-          <BotonAviso />
-        </div>
-      </footer>
+      <PieVarita />
     </>
   );
 }
