@@ -2,6 +2,7 @@
 // datos/dominios-oficiales.json `notas`). Si alguno falla, la herramienta se
 // ha vuelto a equivocar en el caso que más importa.
 import { describe, expect, test } from "bun:test";
+import casosOrganizacion from "../datos/mensajes-ejemplo.json";
 import { verificarMensaje } from "../src/lib/verificar-mensaje";
 import { verificarUrl, type Resultado } from "../src/lib/verificar-url";
 
@@ -49,13 +50,13 @@ describe("trampa: hxxps://…[.]top, el patrón de la campaña AEAT", () => {
 
 describe("trampa: credenciales en la URL", () => {
   test("https://sede.agenciatributaria.gob.es@… es fraude, no la sede", () => {
-    const r = v("https://sede.agenciatributaria.gob.es@malicia-ejemplo.com/pago");
+    const r = v("https://sede.agenciatributaria.gob.es@malicia.example.com/pago");
     expect(r.veredicto).toBe("no_oficial");
     expect(r.motivo).toBe("credenciales_en_url");
   });
 
   test("el disfraz antes de @ no vale como subdominio oficial", () => {
-    const r = v("https://sede.dgt.gob.es@ejemplo-ajeno.es");
+    const r = v("https://sede.dgt.gob.es@ajeno.example.com");
     expect(r.veredicto).toBe("no_oficial");
     expect(r.entidad).toBe("Dirección General de Tráfico (DGT)");
   });
@@ -99,8 +100,9 @@ describe("avisos legítimos L01–L04: nunca se confirman solos", () => {
     },
     {
       id: "L03",
-      texto:
-        "De: correos@correos.com. Asunto: Tu envío está en camino. Puedes seguirlo en el Localizador de Envíos de www.correos.es o en la app de Correos. Código seguro: XXXX-XXXX.",
+      // El texto de L03 se lee de datos/ (material de la organización) para no
+      // copiar su dirección de correo en el código.
+      texto: casosOrganizacion.find((c) => c.id === "L03")!.texto,
       tipo: "email",
       sede: "Correos",
     },

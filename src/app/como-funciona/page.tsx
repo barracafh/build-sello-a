@@ -139,7 +139,7 @@ export default function ComoFunciona() {
               </h2>
               <p className="mt-2 max-w-[70ch] text-base text-(--text-secondary)">
                 Llama al 017 de INCIBE. Es gratuito y confidencial, de 8:00 a
-                23:00 todos los días. También por WhatsApp en el 900 116 117 y
+                23:00 todos los días. También por WhatsApp en el 900&nbsp;116&nbsp;117 y
                 por Telegram en @INCIBE017.
               </p>
             </div>

@@ -26,7 +26,7 @@ describe("resolverDominiosSueltos", () => {
 
   test("no repite lo que ya trae http ni toma correos o abreviaturas", () => {
     expect(urls("Pague en https://dgt-multas.top/pago")).toEqual([]);
-    expect(urls("De: correos@correos.com")).toEqual([]);
+    expect(urls("De: avisos@correos.example.com")).toEqual([]);
     expect(urls("Quedamos a las 5, p.ej. en la plaza")).toEqual([]);
     expect(urls("Su multa del 13.06.2024")).toEqual([]);
   });

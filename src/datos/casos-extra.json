@@ -67,7 +67,7 @@
     {
       "id": "EX08",
       "tipo": "sms",
-      "texto": "De 612 345 678: su paquete esta retenido, pague los gastos de aduana para recibirlo hoy mismo.",
+      "texto": "De 612\u00a0345\u00a0678: su paquete esta retenido, pague los gastos de aduana para recibirlo hoy mismo.",
       "esperado": "no_determinable",
       "pistas": "Patron de Correos falsa y remitente con numero de movil: dos avisos, sin conclusion (paquete_retenido, remitente_movil)."
     }

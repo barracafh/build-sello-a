@@ -21,8 +21,8 @@ describe("analizarRemitente", () => {
   test("un móvil español que dice ser la DGT avisa, y con enlace decide", () => {
     const texto = "DGT: tiene una notificación pendiente.";
     const dgt = "Dirección General de Tráfico (DGT)";
-    expect(analizarRemitente("612 345 678", texto, dgt, false).peso).toBe("aviso");
-    expect(analizarRemitente("+34612345678", texto, dgt, true).peso).toBe("fraude");
+    expect(analizarRemitente("612\u00a0345\u00a0678", texto, dgt, false).peso).toBe("aviso");
+    expect(analizarRemitente("+34\u00a0612\u00a0345\u00a0678", texto, dgt, true).peso).toBe("fraude");
   });
 
   test("un nombre como remitente no confirma nada", () => {
@@ -35,8 +35,8 @@ describe("remitenteDelTexto", () => {
   test("lee las líneas De:, Remitente: y la dirección de un correo", () => {
     expect(remitenteDelTexto("De: +44 7700 900123\nDGT: multa")).toBe("+44 7700 900123");
     expect(remitenteDelTexto("Remitente: DGT\nTiene una multa")).toBe("DGT");
-    expect(remitenteDelTexto("De: Hacienda <avisos@hacienda-pago.com>\nAsunto: x")).toBe(
-      "avisos@hacienda-pago.com",
+    expect(remitenteDelTexto("De: Hacienda <avisos@hacienda-pago.example.com>\nAsunto: x")).toBe(
+      "avisos@hacienda-pago.example.com",
     );
     expect(remitenteDelTexto("Sin remitente aquí")).toBeUndefined();
   });

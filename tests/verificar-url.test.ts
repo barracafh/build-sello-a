@@ -55,7 +55,7 @@ describe("acortadores: nunca se expanden (SETUP.md)", () => {
 
 describe("rechazos de entrada: credenciales e IP", () => {
   test("credenciales en la URL: el dominio real es lo que va después de @", () => {
-    const r = v("https://sede.agenciatributaria.gob.es@malicia-ejemplo.com/pago");
+    const r = v("https://sede.agenciatributaria.gob.es@malicia.example.com/pago");
     expect(resumen(r)).toEqual({ veredicto: "no_oficial", motivo: "credenciales_en_url" });
     // Señala la entidad suplantada y la web oficial buena.
     expect(r.entidad).toBe("Agencia Tributaria (AEAT)");
@@ -63,7 +63,7 @@ describe("rechazos de entrada: credenciales e IP", () => {
   });
 
   test("credenciales con una marca conocida antes de @ se atribuyen a la entidad", () => {
-    const r = v("https://dgt.es@estafa-ejemplo.com");
+    const r = v("https://dgt.es@estafa.example.com");
     expect(resumen(r)).toEqual({ veredicto: "no_oficial", motivo: "credenciales_en_url" });
     expect(r.entidad).toBe("Dirección General de Tráfico (DGT)");
   });

@@ -7,8 +7,20 @@
   "url": "https://build.barraca.house/sello-a",
   "fuentes": [
     {
-      "nombre": "www.incibe.es",
+      "nombre": "INCIBE · Avisos a la ciudadanía",
       "url": "https://www.incibe.es/ciudadania/avisos"
+    },
+    {
+      "nombre": "INCIBE · Línea de Ayuda en Ciberseguridad 017",
+      "url": "https://www.incibe.es/linea-de-ayuda-en-ciberseguridad"
+    },
+    {
+      "nombre": "BOE · Orden ITC/1542/2005 (dominios .gob.es)",
+      "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2005-8902"
+    },
+    {
+      "nombre": "Punto de Acceso General de la Administración",
+      "url": "https://administracion.gob.es"
     }
   ],
   "datos": "simulados"
