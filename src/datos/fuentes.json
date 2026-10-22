@@ -1,0 +1,15 @@
+{
+  "comentario": "Fuentes genéricas que aparecen en las respuestas del verificador, y su orden. 'organismo_por_defecto' es a donde se remite al ciudadano cuando no se identifica la entidad (web del Punto de Acceso General). AÑADIR UNA FUENTE = añadir una entrada aquí y usar su clave en el código o en el campo 'fuente' de una señal de senales.json.",
+  "fuentes": {
+    "incibe_avisos": {
+      "nombre": "INCIBE · Avisos a la ciudadanía",
+      "url": "https://www.incibe.es/ciudadania/avisos"
+    },
+    "incibe_017": {
+      "nombre": "INCIBE · Línea de Ayuda en Ciberseguridad 017",
+      "url": "https://www.incibe.es/linea-de-ayuda-en-ciberseguridad"
+    }
+  },
+  "orden": ["incibe_avisos", "incibe_017"],
+  "organismo_por_defecto": "https://administracion.gob.es"
+}

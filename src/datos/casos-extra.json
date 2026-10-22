@@ -1,0 +1,45 @@
+{
+  "comentario": "Casos de prueba del EQUIPO, con el MISMO esquema que datos/mensajes-ejemplo.json (material de la organización, no editar): id, tipo ('web' | 'sms' | 'email'), texto, esperado ('oficial_verificado' | 'no_oficial' | 'no_determinable') y, opcionales: url, texto_adicional_mismo_aviso, url_prueba_sintetica, url_defanged. Los de aquí se suman a los 10 de la organización en scripts/probar-mensajes.ts y en tests/verificador.test.ts (bun test). Reglas para tus ejemplos: URL sintéticas e inventadas y neutralizadas (hxxps://…[.]top), nunca reales; nada de datos personales. AÑADIR UN CASO NUEVO: añade un objeto a 'casos' y comprueba con `bun scripts/probar-mensajes.ts` que sale el veredicto esperado.",
+  "casos": [
+    {
+      "id": "EX01",
+      "tipo": "web",
+      "texto": "sede.dgt.gob.es",
+      "url": "https://sede.dgt.gob.es",
+      "url_prueba_sintetica": null,
+      "url_defanged": null,
+      "esperado": "oficial_verificado",
+      "pistas": "Sede electrónica de la DGT, dominio de la lista."
+    },
+    {
+      "id": "EX02",
+      "tipo": "web",
+      "texto": "hxxps://dgt.es.multas-pago[.]com",
+      "url": "hxxps://dgt.es.multas-pago[.]com",
+      "url_prueba_sintetica": null,
+      "url_defanged": null,
+      "esperado": "no_oficial",
+      "pistas": "Trampa de dominio: empieza por dgt.es pero el dominio real es multas-pago.com."
+    },
+    {
+      "id": "EX03",
+      "tipo": "web",
+      "texto": "hxxps://agenciatributaria-devolucion[.]top",
+      "url": "hxxps://agenciatributaria-devolucion[.]top",
+      "url_prueba_sintetica": null,
+      "url_defanged": null,
+      "esperado": "no_oficial",
+      "pistas": "Marca de la AEAT en un dominio ajeno, con TLD .top."
+    },
+    {
+      "id": "EX04",
+      "tipo": "web",
+      "texto": "https://mi-pueblo-ejemplo.com",
+      "url": "https://mi-pueblo-ejemplo.com",
+      "url_prueba_sintetica": null,
+      "url_defanged": null,
+      "esperado": "no_determinable",
+      "pistas": "Podría ser el ayuntamiento de un pueblo: dominio desconocido, sin señales de fraude."
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "comentario": "Organismos y cómo se nombran en los mensajes de fraude (contexto.md, 4.2). 'nombre' debe coincidir EXACTO con el campo 'entidad' de datos/dominios-oficiales.json o de dominios-extra.json: es como el verificador une el mensaje con su web oficial. 'patron' es una expresión regular sobre el texto del mensaje sin acentos y en minúsculas. El primero que encaja gana (elige el orden: los más específicos antes). Las señales de contenido de senales.json referencian estas entidades por su 'id'.",
+  "organismos": [
+    {
+      "id": "aeat",
+      "nombre": "Agencia Tributaria (AEAT)",
+      "patron": "agencia tributaria|aeat|agenciatributaria|irpf|\\brenta\\b"
+    },
+    {
+      "id": "dgt",
+      "nombre": "Dirección General de Tráfico (DGT)",
+      "patron": "\\bdgt\\b|trafico|direccion electronica vial|\\bdev\\b"
+    },
+    {
+      "id": "correos",
+      "nombre": "Correos",
+      "patron": "correos"
+    },
+    {
+      "id": "seg-social",
+      "nombre": "Seguridad Social (INSS / TGSS)",
+      "patron": "seguridad social|seg-social|segsocial|tarjeta sanitaria|\\binss\\b|\\btgss\\b"
+    },
+    {
+      "id": "sepe",
+      "nombre": "Servicio Público de Empleo Estatal (SEPE)",
+      "patron": "\\bsepe\\b|prestacion por desempleo|\\bparo\\b"
+    }
+  ]
+}

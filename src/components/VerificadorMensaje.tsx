@@ -61,10 +61,10 @@ export function VerificadorMensaje() {
     setCargando(true);
     setError(undefined);
     try {
-      const res = await fetch(ruta("/api/verificar-mensaje"), {
+      const res = await fetch(ruta("/api/verificar"), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ texto: valor, tipo }),
+        body: JSON.stringify({ entrada: valor, tipo }),
       });
       const data = await res.json();
       if (!res.ok) {

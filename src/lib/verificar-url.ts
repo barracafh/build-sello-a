@@ -2,10 +2,16 @@
 // redirecciones, no expande acortadores y no se conecta a ella (SETUP.md).
 // Pasos de contexto.md, apartado 5.2, sin la PSL completa ni el TLS.
 import { domainToUnicode } from "node:url";
-import lista from "../../datos/dominios-oficiales.json";
+import listaBase from "../../datos/dominios-oficiales.json";
 import { INDICADORES } from "../datos/indicadores";
 import { FUENTE_INQUILINOS, INQUILINOS } from "../datos/inquilinos";
 import fraudes from "../datos/dominios-fraude.json";
+import acortadoresData from "../datos/acortadores.json";
+import marcasData from "../datos/marcas.json";
+import plataformasData from "../datos/plataformas.json";
+import tldsData from "../datos/tlds.json";
+import fuentesData from "../datos/fuentes.json";
+import dominiosExtra from "../datos/dominios-extra.json";
 import type { Source } from "@/components/Fuentes";
 
 export type Veredicto = "oficial_verificado" | "no_oficial" | "no_determinable";
@@ -26,17 +32,21 @@ export type Resultado = {
   requiereDns?: boolean;
 };
 
-type Entidad = (typeof lista.entidades)[number];
+type Entidad = (typeof listaBase.entidades)[number];
 
-const INCIBE_AVISOS: Source = {
-  nombre: "INCIBE · Avisos a la ciudadanía",
-  url: "https://www.incibe.es/ciudadania/avisos",
-};
-const INCIBE_017: Source = {
-  nombre: "INCIBE · Línea de Ayuda en Ciberseguridad 017",
-  url: "https://www.incibe.es/linea-de-ayuda-en-ciberseguridad",
-};
-const PAG = "https://administracion.gob.es";
+// Datos del equipo (src/datos/, documentado en docs/anadir-datos.md): nada de
+// esto está en el código. Añadir un acortador, plataforma, marca, TLD o fuente
+// nueva es editar el JSON correspondiente.
+const ACORTADORES = new Set<string>(acortadoresData.dominios);
+const PLATAFORMAS = plataformasData.bases;
+const TLDS_AVISADOS: string[] = tldsData.tlds;
+const SUFIJOS_EXOTICOS: string[] = tldsData.sufijos;
+const AVISO_TLD = tldsData.aviso;
+const FUENTES_GENERICAS: Source[] = fuentesData.orden
+  .map((clave) => fuentesData.fuentes[clave as keyof typeof fuentesData.fuentes])
+  .filter(Boolean);
+const PAG = fuentesData.organismo_por_defecto;
+
 // Fuente comunitaria, no oficial: se cita como origen del dato junto a INCIBE.
 const FUENTE_FRAUDES: Source = {
   nombre: `${fraudes.origen} · lista comunitaria de phishing activo (licencia ${fraudes.licencia})`,
@@ -46,41 +56,24 @@ const fechaFraudes = fraudes.actualizado
   ? new Date(fraudes.actualizado).toLocaleDateString("es-ES", { timeZone: "UTC" })
   : "fecha desconocida";
 
-const ACORTADORES = new Set([
-  "bit.ly", "bitly.com", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "is.gd",
-  "v.gd", "x.gd", "buff.ly", "cutt.ly", "rebrand.ly", "shorturl.at", "s.id",
-  "t.ly", "rb.gy", "tiny.cc", "lnkd.in", "qrco.de", "short.gy", "bl.ink",
-  "acortar.link", "urlz.fr",
-]);
-
-// TLD baratos o exóticos de las campañas publicadas (contexto.md, 1.4). Son
-// señal, no veredicto: solos no concluyen, pero acompañan a una imitación de
-// marca (paso 10).
-const TLD_BARATOS = new Set(["top", "click", "help", "cfd", "clik"]);
+// TLD baratos o exóticos de las campañas publicadas (contexto.md, 1.4), desde
+// src/datos/tlds.json. Son señal, no veredicto: solos no concluyen, pero
+// acompañan a una imitación de marca (paso 10).
 const tldExotico = (host: string) => {
   const tld = host.split(".").at(-1) ?? "";
-  return TLD_BARATOS.has(tld) || host.endsWith(".eu.cc");
+  return TLDS_AVISADOS.includes(tld) || SUFIJOS_EXOTICOS.some((s) => host.endsWith(`.${s}`));
 };
 
-// Plataformas con comodín: cualquiera de sus subdominios resuelve, así que el
-// inquilino tiene que constar en una lista (src/datos/inquilinos.ts, de
-// comun/04b). No lo damos por oficial sin constancia.
-const PLATAFORMAS = ["sede.gob.es", "sedelectronica.es", "sedipualba.es", "sede.dival.es"];
-
 // Marcas que suplantan las campañas publicadas (contexto.md, 5.2 paso 10).
-export const MARCAS: Record<string, string> = {
-  agenciatributaria: "Agencia Tributaria (AEAT)",
-  aeat: "Agencia Tributaria (AEAT)",
-  hacienda: "Agencia Tributaria (AEAT)",
-  dgt: "Dirección General de Tráfico (DGT)",
-  "seg-social": "Seguridad Social (INSS / TGSS)",
-  segsocial: "Seguridad Social (INSS / TGSS)",
-  seguridadsocial: "Seguridad Social (INSS / TGSS)",
-  sepe: "Servicio Público de Empleo Estatal (SEPE)",
-  correos: "Correos",
-  clave: "Cl@ve (identificación electrónica)",
-  carpetaciudadana: "Mi Carpeta Ciudadana (Estado)",
-  dehu: "DEHú (Dirección Electrónica Habilitada única) – notificaciones",
+// Vienen de src/datos/marcas.json; se exportan porque scripts/actualizar-fraude.ts
+// las usa para filtrar la lista comunitaria de phishing.
+export const MARCAS: Record<string, string> = marcasData.marcas;
+
+// La lista de dominios oficiales es la de la organización (datos/, no se
+// edita) más las entidades que el equipo añada en src/datos/dominios-extra.json.
+const lista = {
+  ...listaBase,
+  entidades: [...listaBase.entidades, ...(dominiosExtra.entidades as Entidad[])],
 };
 
 // Letras de otros alfabetos que se confunden con las latinas (UTS #39, mínimo).
@@ -207,10 +200,10 @@ export function verificarUrl(texto: string): Resultado | { error: string } {
   const avisos: string[] = [];
   if (url.port) avisos.push(`Usa un puerto poco habitual (${url.port}).`);
   const exotico = tldExotico(host);
-  if (exotico)
-    avisos.push(
-      `Termina en ${neutralizar(host.split(".").slice(-2).join("."))}, una extensión barata o exótica que INCIBE ha visto en campañas de fraude.`,
-    );
+  if (exotico) {
+    const sufijo = neutralizar(host.split(".").slice(-2).join("."));
+    avisos.push(AVISO_TLD.replaceAll("{sufijo}", sufijo));
+  }
   const base = { urlNeutralizada, pasos, avisos };
 
   const fraude = (motivo: string, explicacion: string, entidad?: Entidad): Resultado => {
@@ -222,7 +215,7 @@ export function verificarUrl(texto: string): Resultado | { error: string } {
       titular: "No es una web oficial",
       entidad: entidad?.entidad,
       webOficial: entidad?.web_oficial,
-      fuentes: [...(entidad ? fuentesDe(entidad) : []), INCIBE_AVISOS, INCIBE_017],
+      fuentes: [...(entidad ? fuentesDe(entidad) : []), ...FUENTES_GENERICAS],
     };
   };
 
@@ -248,7 +241,7 @@ export function verificarUrl(texto: string): Resultado | { error: string } {
       motivo: "acortador_no_resuelto",
       titular: "No he podido confirmar que sea oficial",
       consejo: noDeterminable(),
-      fuentes: [INCIBE_AVISOS, INCIBE_017],
+      fuentes: [...FUENTES_GENERICAS],
     };
   }
 
@@ -290,7 +283,7 @@ export function verificarUrl(texto: string): Resultado | { error: string } {
       titular: "No he podido confirmar que sea oficial",
       consejo: noDeterminable(),
       webOficial: PAG,
-      fuentes: [INCIBE_AVISOS, INCIBE_017],
+      fuentes: [...FUENTES_GENERICAS],
     };
   }
 
@@ -397,8 +390,7 @@ export function verificarUrl(texto: string): Resultado | { error: string } {
       webOficial: porNombre(indicador.organismo)?.web_oficial,
       fuentes: [
         { nombre: indicador.fuenteNombre, url: indicador.fuenteUrl },
-        INCIBE_AVISOS,
-        INCIBE_017,
+        ...FUENTES_GENERICAS,
       ],
     };
   }
@@ -426,7 +418,7 @@ export function verificarUrl(texto: string): Resultado | { error: string } {
     motivo: "desconocido",
     titular: "No he podido confirmar que sea oficial",
     consejo: noDeterminable(),
-    fuentes: [INCIBE_AVISOS, INCIBE_017],
+    fuentes: [...FUENTES_GENERICAS],
   };
 }
 
@@ -511,7 +503,7 @@ export function verificarEnlaces(enlaces: Enlace[]): ResultadoEnlaces | { error:
           ...(suplantada && {
             entidad: suplantada.entidad,
             webOficial: suplantada.web_oficial,
-            fuentes: [...fuentesDe(suplantada), INCIBE_AVISOS, INCIBE_017],
+            fuentes: [...fuentesDe(suplantada), ...FUENTES_GENERICAS],
           }),
         });
       }
