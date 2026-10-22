@@ -2,6 +2,7 @@ import { Cabecera } from "@/components/Cabecera";
 import { ComprobarAhora } from "@/components/ComprobarAhora";
 import { HeroVortice } from "@/components/HeroVortice";
 import { AyudaCompartirIos } from "@/components/InstalarSello";
+import { VaritaEnTuMovil } from "@/components/VaritaEnTuMovil";
 import { ChatEstafas } from "@/components/ChatEstafas";
 import { ComoFuncionaVarita } from "@/components/PasosVarita";
 import { Pestanas } from "@/components/Pestanas";
@@ -72,6 +73,7 @@ export default function Home() {
         </div>
 
         <AyudaCompartirIos />
+        <VaritaEnTuMovil />
         </div>
 
         <ComoFuncionaVarita />
