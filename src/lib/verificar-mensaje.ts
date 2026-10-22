@@ -88,7 +88,7 @@ export function verificarMensaje(
     }
     pasos.push(
       `Enlace ${enlace} — ${resultado.titular.toLowerCase()}: ${resultado.pasos
-        .filter((p) => p.startsWith("Coincide") || p.startsWith("Es un subdominio") || p.startsWith("Empieza") || p.startsWith("Usa") || p.startsWith("Contiene") || p.startsWith("Termina") || p.startsWith("Es un acortador") || p.startsWith("No está en la lista") || p.startsWith("Lo que va antes") || p.startsWith("Es una dirección"))
+        .filter((p) => p.startsWith("Coincide") || p.startsWith("Es un subdominio") || p.startsWith("Empieza") || p.startsWith("Usa") || p.startsWith("Contiene") || p.startsWith("Termina") || p.startsWith("Es un acortador") || p.startsWith("No está en la lista") || p.startsWith("Lo que va antes") || p.startsWith("Es una dirección") || p.startsWith("Aparece"))
         .join(" ") || resultado.motivo}`,
     );
     if (!("error" in resultado)) avisos.push(...resultado.avisos);
