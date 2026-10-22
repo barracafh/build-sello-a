@@ -1,6 +1,11 @@
-# App Android «Sello» (envoltorio nativo mínimo)
+# App Android «Varita» (envoltorio nativo mínimo)
 
-Existen dos formas de que «Sello» salga en la hoja de **Compartir** de Android:
+> Antes «Sello»: el equipo renombró la herramienta a Varita y el icono es el
+> de la web (morado `#7F56D9` con la varita). Los PNG salen de `public/`
+> (`icon-192.png` e `icon-maskable-512.png`), así que si la identidad cambia
+> de nuevo basta copiarlos y reconstruir.
+
+Existen dos formas de que «Varita» salga en la hoja de **Compartir** de Android:
 
 1. **PWA instalada desde Chrome con Google Play Services completo**: Chrome
    genera una WebAPK (una app real) y registra el `share_target` del manifest.
@@ -19,12 +24,12 @@ guarda nada: el análisis sigue siendo el de la PWA, con sus reglas.
 
 ## Instalar (demo)
 
-1. Copia `Sello.apk` al teléfono (WhatsApp, cable, Drive…).
+1. Copia `Varita-v1.3.apk` al teléfono (WhatsApp, cable, Drive…).
 2. Ábrelo desde el gestor de archivos. Android pedirá permiso para instalar
    de esa fuente: dalo (es un APK firmado por nosotros, sin Play Protect).
-3. Busca «Sello» en el escritorio. Comparte un SMS → saldrá «Sello».
-4. Si antes instalaste el atajo de Chrome/Brave, quítalo del escritorio para
-   no llevarnos a equivocación con dos iconos iguales.
+3. Busca «Varita» en el escritorio. Comparte un SMS → saldrá «Varita».
+4. Si antes instalaste el atajo de Chrome/Brave o un APK anterior («Sello»),
+   quítalo del escritorio y desinstálalo para no duplicar.
 
 ## Reconstruir
 
@@ -42,8 +47,19 @@ d8 --release --lib android.jar --output /tmp/dexdir /tmp/classes/es/barraca/sell
 zip -j /tmp/base.apk /tmp/dexdir/classes.dex
 zipalign -f 4 /tmp/base.apk /tmp/aligned.apk
 apksigner sign --ks sello-demo.keystore --ks-pass pass:sello2026 \
-  --out Sello.apk /tmp/aligned.apk
+  --out Varita-v1.3.apk /tmp/aligned.apk
 ```
+
+## Versiones
+
+| APK | versionCode | qué cambia |
+| --- | --- | --- |
+| `Varita-v1.3.apk` | 4 | icono y nombre de Varita (antes «Sello») |
+| `Sello-v1.2.apk` (histórico, en el log de git) | 3 | abre `/sello-a` sin barra |
+| `Sello.apk` v1.0 (histórico) | 1 | primera versión |
+
+Al compartir el nombre exacto del fichero evitamos la caché de raw.github:
+cada versión lleva su nombre.
 
 ## Aviso sobre la firma
 
