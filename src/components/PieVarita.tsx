@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BotonAviso } from "@/components/BotonAviso";
+import { ContadorNoche } from "@/components/ContadorNoche";
 import { AYUDA_INCIBE, PAGINAS } from "@/config/navegacion";
 import { ruta } from "@/config/sitio";
 import ficha from "../../ficha.json";
@@ -74,6 +75,9 @@ export function PieVarita() {
         <p className="mx-auto mt-12 max-w-(--container-content) border-t border-[#e9d7fe] pt-6 text-sm text-(--text-secondary)">
           © 2026 Varita · Build night BARRACA x SOTI · València
         </p>
+        <div className="mx-auto mt-2 max-w-(--container-content)">
+          <ContadorNoche />
+        </div>
       </div>
     </footer>
   );

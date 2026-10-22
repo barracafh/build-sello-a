@@ -12,6 +12,7 @@ import {
   type Enlace,
   type Resultado,
 } from "./verificar-url";
+import { registrarAnalisis } from "./estadisticas";
 import { verificarMensaje } from "./verificar-mensaje";
 import { marcarDnsDegradado } from "./providers";
 
@@ -50,13 +51,19 @@ export async function verificar(
   if (tipo === "url" || tipo === "web") {
     const resultado = verificarUrl(entrada);
     if ("error" in resultado) return { status: 400, cuerpo: resultado };
-    return { status: 200, cuerpo: await conDns(resultado) };
+    const respuesta = { status: 200, cuerpo: await conDns(resultado) };
+    // Métricas agregadas, solo el número: nada de la entrada sale de aquí.
+    registrarAnalisis(tipo, respuesta.cuerpo.veredicto);
+    return respuesta;
   }
 
-  return {
+  const respuesta = {
     status: 200,
     cuerpo: verificarMensaje(entrada, tipo, enlaceOculto, remitente),
   };
+  // Métricas agregadas, solo el número: nada de la entrada sale de aquí.
+  registrarAnalisis(tipo, respuesta.cuerpo.veredicto);
+  return respuesta;
 }
 
 // Enlaces de un correo copiado ({texto, href}): cada uno pasa por el
@@ -79,18 +86,18 @@ export async function verificarListaEnlaces(
   const bajado = verificados.some((e) =>
     ["gob_es_inexistente", "gob_es_dns_no_confirmado"].includes(e.resultado.motivo),
   );
-  return {
-    status: 200,
-    cuerpo: {
-      ...resultado,
-      ...(bajado &&
-        resultado.veredicto === "oficial_verificado" && {
-          veredicto: "no_determinable",
-          titular: "No he podido confirmar que todos los enlaces sean oficiales",
-        }),
-      enlaces: verificados,
-    },
+  const cuerpo = {
+    ...resultado,
+    ...(bajado &&
+      resultado.veredicto === "oficial_verificado" && {
+        veredicto: "no_determinable" as const,
+        titular: "No he podido confirmar que todos los enlaces sean oficiales",
+      }),
+    enlaces: verificados,
   };
+  // Los enlaces llegan del correo copiado: cuentan como "email".
+  registrarAnalisis("email", cuerpo.veredicto);
+  return { status: 200, cuerpo };
 }
 
 // Regla *.gob.es: solo cuenta si el host existe. Consultar el DNS no abre la
