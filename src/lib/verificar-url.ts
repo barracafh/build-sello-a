@@ -486,12 +486,17 @@ export function verificarEnlaces(enlaces: Enlace[]): ResultadoEnlaces | { error:
     if ("error" in r) continue;
 
     const visible = texto.trim().replace(/\s+/g, " ").slice(0, 120);
-    const real = new URL(destino.url).hostname.replace(/\.$/, "");
+    // El href viene del HTML pegado y puede ser basura que no se deja
+    // parsear (el texto pegado a menudo va neutralizado: hxxps://…[.]com).
+    // Sin host real no se puede comparar con el texto visible, pero el
+    // veredicto de arriba (que analiza el texto desneutralizado) sigue
+    // siendo válido. Nunca lanza: la API no puede dar un 500 por esto.
+    const real = hostDe(destino.url);
     const hostVisible = hostDe(visible);
     if (destino.envoltorio)
       r.pasos.splice(1, 0, `Venía envuelto por ${neutralizar(destino.envoltorio)}; he leído el destino que lleva dentro.`);
 
-    if (hostVisible && hostVisible !== real && !termina(real, hostVisible)) {
+    if (real && hostVisible && hostVisible !== real && !termina(real, hostVisible)) {
       const trampa = `El texto dice ${neutralizar(hostVisible)}, pero el enlace lleva a ${neutralizar(real)}.`;
       if (r.veredicto === "oficial_verificado") r.avisos.push(trampa);
       else {

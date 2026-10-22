@@ -181,3 +181,29 @@ describe("GET /api/health", () => {
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
   });
 });
+
+describe("enlaces con href inservible: nunca un 500", () => {
+  test("un href neutralizado (hxxps://…[.]com) no lanza: se analiza desneutralizado", async () => {
+    const res = await postVerificarUrl(
+      peticion({ enlaces: [{ texto: "pague aquí", href: "https://aeat-devolucion[.]top" }] }),
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.enlaces).toHaveLength(1);
+    expect(data.enlaces[0].resultado.veredicto).toBe("no_oficial");
+  });
+
+  test("un href sin esquema válido se salta, y sin enlaces válidos da 422, no 500", async () => {
+    const res = await postVerificarUrl(peticion({ enlaces: [{ texto: "x", href: "no-es-una-url" }] }));
+    expect(res.status).toBe(422);
+    expect((await res.json()).codigo).toBe("enlaces_no_reconocidos");
+  });
+
+  test("la detección de enlace enmascarado sigue igual con href bien formado", async () => {
+    const res = await postVerificarUrl(
+      peticion({ enlaces: [{ texto: "www.agenciatributaria.gob.es", href: "https://multas-pago.com/pago" }] }),
+    );
+    const data = await res.json();
+    expect(data.enlaces[0].resultado.motivo).toBe("enlace_enmascarado");
+  });
+});
