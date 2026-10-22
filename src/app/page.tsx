@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { BotonAviso } from "@/components/BotonAviso";
+import { ChatEstafas } from "@/components/ChatEstafas";
 import { Pestanas } from "@/components/Pestanas";
-import { VerificadorMensaje } from "@/components/VerificadorMensaje";
 import { VerificadorUrl } from "@/components/VerificadorUrl";
 import ficha from "../../ficha.json";
 
@@ -84,26 +84,6 @@ export default function Home() {
           <Pestanas
             pestanas={[
               {
-                id: "sms",
-                etiqueta: "SMS o correo",
-                contenido: (
-                  <>
-                    <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
-                      Verificador de mensajes
-                    </p>
-                    <h2 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
-                      ¿Este mensaje es de verdad?
-                    </h2>
-                    <p className="mt-6 text-lg text-(--text-secondary)">
-                      Pega el SMS o el correo que te ha llegado. Miramos sus
-                      enlaces y sus señales de fraude, y te decimos cuál es la
-                      web oficial buena.
-                    </p>
-                    <VerificadorMensaje />
-                  </>
-                ),
-              },
-              {
                 id: "web",
                 etiqueta: "Web",
                 contenido: (
@@ -120,6 +100,25 @@ export default function Home() {
                       es suya y cuál es la buena.
                     </p>
                     <VerificadorUrl />
+                  </>
+                ),
+              },
+              {
+                id: "chat",
+                etiqueta: "Chat",
+                contenido: (
+                  <>
+                    <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
+                      SMS, correos y webs
+                    </p>
+                    <h2 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
+                      Pregúntanos por lo que te ha llegado
+                    </h2>
+                    <p className="mt-6 text-lg text-(--text-secondary)">
+                      Copia y pega el SMS, el correo o la dirección web tal
+                      cual. Te decimos si es oficial y cuál es la web buena.
+                    </p>
+                    <ChatEstafas />
                   </>
                 ),
               },
