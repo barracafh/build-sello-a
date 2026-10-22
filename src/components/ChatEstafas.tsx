@@ -32,7 +32,9 @@ export type ResultadoChat = {
   pasos: string[];
   avisos: string[];
   entidad?: string;
-  // Solo se rellena con una web de datos/dominios-oficiales.json.
+  // La web buena que se enlaza: un dominio de la lista oficial, un inquilino
+  // verificado de una plataforma compartida (src/datos/inquilinos.ts) o, si no
+  // se identifica la entidad, la del Punto de Acceso General.
   webOficial?: string;
   // Solo en las URL sueltas: la dirección analizada, neutralizada.
   urlNeutralizada?: string;

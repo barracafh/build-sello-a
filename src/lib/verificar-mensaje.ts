@@ -10,7 +10,6 @@ import { noDeterminable, verificarUrl, type Veredicto } from "./verificar-url";
 import {
   aludeEnlace,
   detectarOrganismo,
-  neutralizar,
   patronesContenido,
   resolverDominiosSueltos,
   resolverEnlaces,
