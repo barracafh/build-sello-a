@@ -130,7 +130,11 @@ export function patronesContenido(
     });
   }
 
-  if (/24 horas|48 horas|72 horas|recargo|ultimo recordatorio|ultima advertencia|inmediatamente/.test(t)) {
+  if (
+    /\b(24|48|72) ?h(oras)?\b|\d{1,2} horas restantes|hoy mismo|antes de (las|que)|ultimo (aviso|recordatorio|plazo)|ultima (advertencia|oportunidad)|inmediatamente|de inmediato|urgente|expira|caduca|si no (actua|paga|responde)/.test(
+      t,
+    )
+  ) {
     avisos.push({
       code: "urgencia",
       detalle: "Mete prisa con un plazo corto: es una señal típica de fraude, aunque por sí sola no concluye.",
@@ -142,5 +146,105 @@ export function patronesContenido(
       detalle: "El texto tiene errores de codificación o tildes ausentes: un aviso institucional real los pasa por control.",
     });
   }
+
+  // --- Señales añadidas (nuevas_reglas_verificacion.txt) ---
+
+  // Transferencia, Bizum o IBAN: ningún organismo cobra así por mensaje.
+  if (/transferencia|bizum|\biban\b|numero de cuenta|\bes\d{2}\s?\d{4}/.test(t)) {
+    concluyentes.push({
+      code: "transferencia_o_bizum",
+      detalle:
+        "Pide una transferencia, un Bizum o un número de cuenta. Las administraciones no cobran así por SMS ni por correo.",
+    });
+  }
+
+  // Pide confirmar o actualizar datos personales a través de un enlace.
+  if (
+    hayEnlace &&
+    /(introduz|facilit|confirm|actualic|verifi|valid)[a-z]*\b[^.]{0,60}\b(dni|nif|nie|contrasena|clave|usuario|identidad|datos personales)/.test(
+      t,
+    )
+  ) {
+    concluyentes.push({
+      code: "pide_datos_personales",
+      detalle:
+        "Pide confirmar o actualizar datos personales (DNI, contraseña, Cl@ve) en un enlace. Es el gancho clásico del phishing.",
+    });
+  }
+
+  // Pide instalar una app o descargar un archivo.
+  if (
+    /instal[a-z]+ (la |una |esta )?(app|aplicacion)|descarg[a-z]+ (el |la |un )?(archivo|adjunto|aplicacion|apk)/.test(
+      t,
+    )
+  ) {
+    concluyentes.push({
+      code: "pide_instalar",
+      detalle:
+        "Pide instalar una aplicación o descargar un archivo. Las apps oficiales solo se instalan desde las tiendas oficiales, nunca desde un enlace de SMS.",
+    });
+  }
+
+  // Amenaza con consecuencias (embargo, bloqueo, suspensión): asusta, pero no concluye.
+  if (
+    /embargo|bloqueo|bloqueada|bloqueara|suspension|suspendida|se le retirara|perdera (el|su|la)|cancelacion/.test(
+      t,
+    )
+  ) {
+    avisos.push({
+      code: "amenaza",
+      detalle: "Amenaza con una consecuencia (embargo, bloqueo, suspensión) para que actúes sin pensar.",
+    });
+  }
+
+  // Promete dinero pendiente de cobrar (fuera del caso AEAT + enlace, que ya es concluyente).
+  if (devolucion && !hayEnlace) {
+    avisos.push({
+      code: "dinero_pendiente",
+      detalle: "Promete un dinero pendiente de cobrar. Las devoluciones reales se ingresan en tu cuenta sin que hagas nada.",
+    });
+  }
+
+  // Paquete retenido con una pequeña tasa: patrón de las campañas de Correos falsas.
+  if (
+    /paquete (retenido|pendiente)|gastos de aduana|tasa de (envio|entrega|aduana)|no se ha podido entregar/.test(
+      t,
+    )
+  ) {
+    avisos.push({
+      code: "paquete_retenido",
+      detalle:
+        "Habla de un paquete retenido o de una tasa de entrega. Es el patrón de las campañas falsas de Correos que publica INCIBE.",
+    });
+  }
+
+  // Premio o sorteo.
+  if (/ha ganado|has ganado|premio|sorteo|regalo/.test(t)) {
+    avisos.push({
+      code: "premio",
+      detalle: "Habla de un premio o regalo. Las administraciones no reparten premios por SMS.",
+    });
+  }
+
+  // Pago con enlace de un organismo fuera de los cinco principales: aviso, no acusación.
+  if (!deLosCinco && pidePago && hayEnlace) {
+    avisos.push({
+      code: "pago_enlace_otro",
+      detalle: "Pide un pago a través de un enlace. Los organismos cobran por su sede electrónica, no por enlaces de mensaje.",
+    });
+  }
+
+  // Remitente genérico o número de móvil: los organismos envían con remitente alfanumérico.
+  if (
+    tipo === "sms" &&
+    /\b(de|desde|remitente)[: ]+(\+34\s?)?[67]\d{2}\s?\d{3}\s?\d{3}\b/.test(t)
+  ) {
+    avisos.push({
+      code: "remitente_movil",
+      detalle:
+        "Viene de un número de móvil normal. Los avisos oficiales llegan con remitente alfanumérico (AEAT, DGT…), no desde un 6xx o 7xx.",
+    });
+  }
+
   return { concluyentes, avisos };
 }

@@ -251,3 +251,158 @@ describe("patronesContenido", () => {
     expect(avisos).toHaveLength(0);
   });
 });
+
+describe("patronesContenido · señales añadidas (nuevas_reglas_verificacion.txt)", () => {
+  test("transferencia, Bizum o IBAN es concluyente", () => {
+    const { concluyentes } = patronesContenido(
+      "Realice una transferencia a la cuenta indicada para regularizar su situacion",
+      "sms",
+      false,
+    );
+    expect(concluyentes.map((s) => s.code)).toContain("transferencia_o_bizum");
+
+    const conIban = patronesContenido(
+      "Envie su IBAN ES91 1234 5678 para recibir el ingreso",
+      "sms",
+      false,
+    );
+    expect(conIban.concluyentes.map((s) => s.code)).toContain("transferencia_o_bizum");
+
+    const conBizum = patronesContenido("Pague las tasas por Bizum al numero indicado", "sms", false);
+    expect(conBizum.concluyentes.map((s) => s.code)).toContain("transferencia_o_bizum");
+  });
+
+  test("confirmar datos personales SOLO concluye si hay enlace", () => {
+    const conEnlace = patronesContenido(
+      "Confirme sus datos personales en el enlace que le enviamos",
+      "sms",
+      true,
+    );
+    expect(conEnlace.concluyentes.map((s) => s.code)).toContain("pide_datos_personales");
+
+    // Sin enlace, el mismo texto no acusa.
+    const sinEnlace = patronesContenido(
+      "Confirme sus datos personales en la sedeelectronica",
+      "sms",
+      false,
+    );
+    expect(sinEnlace.concluyentes).toHaveLength(0);
+  });
+
+  test("pide_datos_personales pilla DNI, contraseña y Cl@ve", () => {
+    for (const texto of [
+      "Verifique su DNI y contrasena en el enlace recibido",
+      "Introduzca su usuario y clave de acceso en el enlace",
+      "Valide su identidad en el enlace adjunto",
+    ]) {
+      const r = patronesContenido(texto, "sms", true);
+      expect(r.concluyentes.map((s) => s.code)).toContain("pide_datos_personales");
+    }
+  });
+
+  test("instalar una app o descargar un archivo es concluyente", () => {
+    const app = patronesContenido("Instale la aplicacion desde el enlace para recibir su tarjeta", "sms", true);
+    expect(app.concluyentes.map((s) => s.code)).toContain("pide_instalar");
+
+    const apk = patronesContenido("Descargue el archivo adjunto para ver el expediente", "sms", false);
+    expect(apk.concluyentes.map((s) => s.code)).toContain("pide_instalar");
+  });
+
+  test("amenaza con embargo o bloqueo es un aviso, no concluye", () => {
+    const { concluyentes, avisos } = patronesContenido(
+      "Su tarjeta sera bloqueada si no actualiza sus datos",
+      "sms",
+      false,
+    );
+    expect(concluyentes).toHaveLength(0);
+    expect(avisos.map((s) => s.code)).toContain("amenaza");
+  });
+
+  test("dinero pendiente sin enlace es aviso; con enlace ya acusa la regla AEAT", () => {
+    const sinEnlace = patronesContenido(
+      "Tiene una devolucion pendiente de 250 euros",
+      "sms",
+      false,
+    );
+    expect(sinEnlace.avisos.map((s) => s.code)).toContain("dinero_pendiente");
+    expect(sinEnlace.concluyentes).toHaveLength(0);
+
+    const conEnlace = patronesContenido(
+      "AEAT: tiene una devolucion pendiente, pulse el enlace",
+      "sms",
+      true,
+    );
+    expect(conEnlace.concluyentes.map((s) => s.code)).toContain("devolucion_enlace");
+    expect(conEnlace.avisos.map((s) => s.code)).not.toContain("dinero_pendiente");
+  });
+
+  test("paquete retenido o tasa de entrega es el aviso de Correos falsas", () => {
+    const retenido = patronesContenido(
+      "Su paquete retenido en aduana, confirme en el enlace",
+      "sms",
+      false,
+    );
+    expect(retenido.avisos.map((s) => s.code)).toContain("paquete_retenido");
+
+    const noEntregado = patronesContenido(
+      "Su envio no se ha podido entregar por un gastos de envio pendiente",
+      "sms",
+      false,
+    );
+    expect(noEntregado.avisos.map((s) => s.code)).toContain("paquete_retenido");
+  });
+
+  test("premio o sorteo es un aviso", () => {
+    const r = patronesContenido("¡Ha ganado un sorteo de la Comunidad!", "sms", false);
+    expect(r.concluyentes).toHaveLength(0);
+    expect(r.avisos.map((s) => s.code)).toContain("premio");
+  });
+
+  test("pago con enlace de un organismo fuera de los cinco es aviso", () => {
+    const r = patronesContenido(
+      "El ayuntamiento le comunica: pague sus tasas en el enlace",
+      "sms",
+      true,
+    );
+    expect(r.concluyentes).toHaveLength(0);
+    expect(r.avisos.map((s) => s.code)).toContain("pago_enlace_otro");
+  });
+
+  test("remitente con numero de movil es aviso solo en SMS", () => {
+    const sms = patronesContenido("De: 612 345 678. Su paquete ha llegado", "sms", false);
+    expect(sms.avisos.map((s) => s.code)).toContain("remitente_movil");
+
+    const conPrefijo = patronesContenido("Desde: +34 722 112 233. Su paquete ha llegado", "sms", false);
+    expect(conPrefijo.avisos.map((s) => s.code)).toContain("remitente_movil");
+
+    const email = patronesContenido("De: 612 345 678. Su paquete ha llegado", "email", false);
+    expect(email.avisos.map((s) => s.code)).not.toContain("remitente_movil");
+  });
+
+  test("la urgencia ampliada pilla más formas", () => {
+    for (const texto of [
+      "Es urgente que responda",
+      "Su suscripcion expira manana",
+      "Si no actua se cancelara su cita",
+      "Tiene 48h para responder",
+      " Ultimo aviso antes del cierre",
+      "Debe pagar hoy mismo",
+    ]) {
+      const r = patronesContenido(texto, "sms", false);
+      expect(r.avisos.map((s) => s.code)).toContain("urgencia");
+    }
+  });
+
+  test("los avisos legítimos L01–L04 no disparan ninguna señal nueva", () => {
+    for (const texto of [
+      "AEAT: Tiene una nueva notificacion disponible. Acceda por sus propios medios a la Sede. Este mensaje es solo informativo.",
+      "Asunto: DEV - Tiene una nueva notificacion. Acceda a la Sede de la DGT e identifiquese con DNI electronico, certificado digital o Cl@ve.",
+      "Tu envio esta en camino. Puedes seguirlo en el Localizador de Envios de www.correos.es o en la app de Correos.",
+      "Asunto: DEHu - Aviso de nueva notificacion. Puede acceder a ella en dehu.redsara.es. Este es un aviso de cortesia.",
+    ]) {
+      const r = patronesContenido(texto, "email", false);
+      expect(r.concluyentes).toHaveLength(0);
+      expect(r.avisos).toHaveLength(0);
+    }
+  });
+});

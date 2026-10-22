@@ -75,6 +75,23 @@ describe("combinación de veredictos de enlaces", () => {
 });
 
 describe("reglas de contenido de INCIBE", () => {
+  test("pedir un Bizum o una transferencia ya es fraude, sin enlace", () => {
+    const r = verificarMensaje(
+      "Agencia: regularice su deuda realizando una transferencia al numero de cuenta indicado hoy mismo",
+      "sms",
+    );
+    expect(r.veredicto).toBe("no_oficial");
+    expect(r.motivo).toBe("transferencia_o_bizum");
+  });
+
+  test("confirmar DNI y contraseña en un enlace es fraude", () => {
+    const r = verificarMensaje(
+      "Cl@ve: verifique su identidad y contrasena en el enlace hxxps://clave-verificacion[.]top/login",
+      "sms",
+    );
+    expect(r.veredicto).toBe("no_oficial");
+  });
+
   test("pedir datos bancarios sin enlace ya es fraude", () => {
     const r = verificarMensaje(
       "SEGURIDAD SOCIAL: envie numero de tarjeta, caducidad y CVV para verificar su identidad",
