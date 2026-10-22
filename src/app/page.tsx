@@ -1,32 +1,13 @@
 import { Cabecera } from "@/components/Cabecera";
+import { Cejilla } from "@/components/Cejilla";
 import { ComprobarAhora } from "@/components/ComprobarAhora";
 import { AyudaCompartirIos } from "@/components/InstalarSello";
 import { ChatEstafas } from "@/components/ChatEstafas";
+import { ComoFuncionaVarita } from "@/components/PasosVarita";
 import { Pestanas } from "@/components/Pestanas";
 import { PieVarita } from "@/components/PieVarita";
 import { PorQueVarita } from "@/components/PorQueVarita";
 import { VerificadorUrl } from "@/components/VerificadorUrl";
-import ficha from "../../ficha.json";
-
-// Qué hace la herramienta, en tres pasos. Es la explicación que ve cualquiera
-// antes de usarla.
-const QUE_HACEMOS = [
-  {
-    titulo: "Nos pasas lo que has recibido",
-    detalle:
-      "Un SMS, un correo, la dirección de una web o una captura de pantalla que dice venir de la DGT, Hacienda, la Seguridad Social, Correos u otro organismo. Pégalo aquí o reenvíanoslo por WhatsApp.",
-  },
-  {
-    titulo: "Lo leemos solo como texto",
-    detalle:
-      "De una captura sacamos el texto, el remitente y los enlaces escondidos con un modelo de IA. Nunca abrimos los enlaces, no seguimos redirecciones y no guardamos nada de lo que nos mandas. Comparamos con listas oficiales y con los patrones de fraude que publica INCIBE.",
-  },
-  {
-    titulo: "Te decimos la verdad que sabemos",
-    detalle:
-      "Un veredicto claro con su motivo y, si no es oficial, cuál es la web buena. Si no lo podemos confirmar, lo decimos: un dominio desconocido no es un fraude demostrado.",
-  },
-];
 
 export default function Home() {
   return (
@@ -34,11 +15,9 @@ export default function Home() {
       <Cabecera />
 
       <main id="contenido" tabIndex={-1} className="outline-none">
-        <div className="mx-auto max-w-[760px] px-(--page-gutter) pt-10 pb-20 md:pt-14">
-        <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
-          {ficha.frase}
-        </p>
-        <h1 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
+        <div className="mx-auto max-w-[760px] px-(--page-gutter) pt-10 pb-4 md:pt-14">
+        <Cejilla>Experimental · No es un servicio oficial</Cejilla>
+        <h1 className="mt-3 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
           Destapa el truco antes de pinchar.
         </h1>
         <p className="mt-6 text-lg text-(--text-secondary)">
@@ -48,27 +27,7 @@ export default function Home() {
           la buena.
         </p>
 
-        {/* Qué hacemos, en tres pasos */}
-        <ol className="mt-10 grid gap-8">
-          {QUE_HACEMOS.map((paso, i) => (
-            <li
-              key={paso.titulo}
-              className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-3 md:grid-cols-[44px_minmax(0,1fr)] md:gap-x-5"
-            >
-              <span className="text-[26px] leading-[1.1] font-light text-brand tabular-nums md:text-[34px]">
-                {i + 1}
-              </span>
-              <div>
-                <h2 className="text-lg font-medium">{paso.titulo}</h2>
-                <p className="mt-1 text-[15px] text-(--text-secondary)">
-                  {paso.detalle}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
-
-        <div id="comprobar" className="mt-12 scroll-mt-6">
+        <div id="comprobar" className="mt-10 scroll-mt-6">
           <Pestanas
             pestanas={[
               {
@@ -117,6 +76,7 @@ export default function Home() {
         <AyudaCompartirIos />
         </div>
 
+        <ComoFuncionaVarita />
         <PorQueVarita />
         <ComprobarAhora enPortada />
       </main>

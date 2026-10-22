@@ -1,5 +1,5 @@
 import { Copy, ExternalLink, Eye, WandSparkles } from "lucide-react";
-import { IconoDestacado } from "@/components/Cejilla";
+import { Cejilla, IconoDestacado } from "@/components/Cejilla";
 
 const PASOS = [
   {
@@ -25,22 +25,57 @@ const PASOS = [
   },
 ];
 
-// Los cuatro pasos de «¿Cómo funciona Varita?».
-export function PasosVarita() {
+// Bloque «¿Cómo funciona Varita?» del diseño: la entradilla a la izquierda y
+// los cuatro pasos en línea vertical a la derecha.
+export function ComoFuncionaVarita() {
   return (
-    <ol className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-      {PASOS.map(({ icono: Icono, titulo, texto }, i) => (
-        <li key={titulo}>
-          <IconoDestacado>
-            <Icono className="size-6" />
-          </IconoDestacado>
-          <h3 className="mt-5 text-xl font-semibold">
-            <span className="sr-only">Paso {i + 1}: </span>
-            {titulo}
-          </h3>
-          <p className="mt-2 text-base text-(--text-secondary)">{texto}</p>
-        </li>
-      ))}
-    </ol>
+    <section
+      aria-labelledby="como-funciona"
+      className="mx-auto grid max-w-(--container-content) gap-12 px-(--page-gutter) py-16 md:py-24 lg:grid-cols-[minmax(0,480px)_minmax(0,1fr)] lg:gap-16"
+    >
+      <div>
+        <Cejilla>Descubre el truco</Cejilla>
+        <h2
+          id="como-funciona"
+          className="mt-4 text-[clamp(30px,3vw,36px)] leading-[1.2] tracking-[-0.02em]"
+        >
+          ¿Cómo funciona Varita?
+        </h2>
+        <p className="mt-4 text-xl text-(--text-secondary)">
+          Sin instalar nada ni registrarte. Copias, pegas y sabes si el mensaje
+          es de quien dice ser.
+        </p>
+      </div>
+
+      <ol>
+        {PASOS.map(({ icono: Icono, titulo, texto }, i) => {
+          const ultimo = i === PASOS.length - 1;
+          return (
+            <li key={titulo} className="flex gap-4">
+              <div className="flex flex-col items-center gap-2">
+                <IconoDestacado pequeno>
+                  <Icono className="size-5" />
+                </IconoDestacado>
+                {!ultimo && (
+                  <span
+                    aria-hidden="true"
+                    className="w-0.5 flex-1 rounded-full bg-[#e9d7fe]"
+                  />
+                )}
+              </div>
+              <div className={ultimo ? "pt-2" : "pt-2 pb-8"}>
+                <h3 className="text-lg font-bold">
+                  <span className="sr-only">Paso {i + 1}: </span>
+                  {titulo}
+                </h3>
+                <p className="mt-1 text-base text-(--text-secondary)">
+                  {texto}
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }

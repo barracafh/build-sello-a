@@ -34,10 +34,8 @@ export function PorQueVarita({ comoPagina = false }: { comoPagina?: boolean }) {
   const Titulo = comoPagina ? "h1" : "h2";
 
   return (
-    <section
-      aria-labelledby="por-que-varita"
-      className="mx-auto max-w-(--container-content) px-(--page-gutter) py-16 md:py-20"
-    >
+    <section aria-labelledby="por-que-varita" className="bg-[#fafafa]">
+      <div className="mx-auto max-w-(--container-content) px-(--page-gutter) py-16 md:py-20">
       <div className="grid items-center gap-10 md:grid-cols-[minmax(0,1fr)_290px] lg:gap-20">
         <div>
           <Cejilla>Por qué Varita</Cejilla>
@@ -73,17 +71,18 @@ export function PorQueVarita({ comoPagina = false }: { comoPagina?: boolean }) {
         />
       </div>
 
-      <ul className="mt-14 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="mt-14 grid gap-x-10 gap-y-10 rounded-3xl bg-white p-6 sm:grid-cols-2 md:p-10 lg:grid-cols-4">
         {VENTAJAS.map(({ icono: Icono, titulo, texto }) => (
           <li key={titulo}>
             <IconoDestacado>
               <Icono className="size-6" />
             </IconoDestacado>
-            <h3 className="mt-5 text-xl font-semibold">{titulo}</h3>
+            <h3 className="mt-5 text-lg font-bold">{titulo}</h3>
             <p className="mt-2 text-base text-(--text-secondary)">{texto}</p>
           </li>
         ))}
       </ul>
+      </div>
     </section>
   );
 }

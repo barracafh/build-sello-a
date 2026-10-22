@@ -4,7 +4,7 @@ import { Cabecera } from "@/components/Cabecera";
 import { Cejilla, IconoDestacado } from "@/components/Cejilla";
 import { ComprobarAhora } from "@/components/ComprobarAhora";
 import { Fuentes } from "@/components/Fuentes";
-import { PasosVarita } from "@/components/PasosVarita";
+import { ComoFuncionaVarita } from "@/components/PasosVarita";
 import { PieVarita } from "@/components/PieVarita";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -57,7 +57,7 @@ export default function ComoFunciona() {
       <Cabecera />
 
       <main id="contenido" tabIndex={-1} className="outline-none">
-        <section className="mx-auto max-w-(--container-content) px-(--page-gutter) pt-10 pb-16 md:pt-16">
+        <section className="mx-auto max-w-(--container-content) px-(--page-gutter) pt-10 md:pt-16">
           <div className="max-w-[760px]">
             <Cejilla>Cómo funciona</Cejilla>
             <h1 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
@@ -70,24 +70,7 @@ export default function ComoFunciona() {
           </div>
         </section>
 
-        <section
-          aria-labelledby="pasos"
-          className="mx-auto max-w-(--container-content) px-(--page-gutter) pb-16"
-        >
-          <h2
-            id="pasos"
-            className="text-[clamp(28px,3vw,36px)] leading-[1.15] tracking-[-0.02em]"
-          >
-            ¿Cómo funciona Varita?
-          </h2>
-          <p className="mt-3 max-w-[60ch] text-lg text-(--text-secondary)">
-            Sin instalar nada ni registrarte. Copias, pegas y sabes si el
-            mensaje es de quien dice ser.
-          </p>
-          <div className="mt-10">
-            <PasosVarita />
-          </div>
-        </section>
+        <ComoFuncionaVarita />
 
         <section
           aria-label="Qué miramos, qué no hacemos y qué significa cada respuesta"
@@ -143,7 +126,7 @@ export default function ComoFunciona() {
           aria-labelledby="ayuda-017"
           className="mx-auto max-w-(--container-content) px-(--page-gutter) pb-16"
         >
-          <div className="flex flex-col gap-6 rounded-[28px] bg-[#f9f5ff] p-6 md:flex-row md:items-center md:p-10">
+          <div className="flex flex-col gap-6 rounded-[28px] bg-[#fafafa] p-6 md:flex-row md:items-center md:p-10">
             <IconoDestacado>
               <PhoneCall className="size-6" />
             </IconoDestacado>
