@@ -35,6 +35,8 @@ export type ResultadoChat = {
   webOficial?: string;
   // Solo en las URL sueltas: la dirección analizada, neutralizada.
   urlNeutralizada?: string;
+  // Solo en los mensajes: hay un enlace sin dirección visible («pulse aquí»).
+  enlaceSinDireccion?: { frase?: string };
   fuentes: Source[];
 };
 
@@ -59,7 +61,11 @@ type Contenido =
   | { autor: "asistente"; lectura: Lectura }
   | {
       autor: "asistente";
-      sinDireccion: { palabras: string[]; veredicto?: Veredicto };
+      sinDireccion: {
+        palabras: string[];
+        veredicto?: Veredicto;
+        enCaptura: boolean;
+      };
     }
   | { autor: "asistente"; resultado: ResultadoChat }
   | { autor: "asistente"; enlaces: ResultadoEnlaces };
@@ -307,26 +313,23 @@ export function ChatEstafas() {
     setErrorAdjunto(undefined);
     setCargando(true);
     try {
-      if (!imagen) {
-        for (const r of await analizar(limpio, enlaces)) añadir(r);
-        return;
-      }
       // La captura se lee primero; su texto sigue el mismo camino que si
       // se hubiera pegado.
-      let lectura: Lectura;
-      try {
-        lectura = await pedir<Lectura>("/api/leer-captura", { imagen });
-      } catch (error) {
-        añadir({
-          autor: "asistente",
-          texto:
-            error instanceof Error
-              ? error.message
-              : "No he podido leer la captura. Pega el texto.",
-        });
-        return;
-      }
-      if (!lectura.texto) {
+      let lectura: Lectura | undefined;
+      if (imagen)
+        try {
+          lectura = await pedir<Lectura>("/api/leer-captura", { imagen });
+        } catch (error) {
+          añadir({
+            autor: "asistente",
+            texto:
+              error instanceof Error
+                ? error.message
+                : "No he podido leer la captura. Pega el texto.",
+          });
+          return;
+        }
+      if (lectura && !lectura.texto) {
         añadir({
           autor: "asistente",
           texto:
@@ -334,21 +337,30 @@ export function ChatEstafas() {
         });
         return;
       }
-      añadir({ autor: "asistente", lectura });
-      const conOculto = lectura.enlacesOcultos.length > 0;
+      if (lectura) añadir({ autor: "asistente", lectura });
+      const enCaptura = !!lectura?.enlacesOcultos.length;
       const respuestas = await analizar(
-        [limpio, lectura.texto].filter(Boolean).join("\n\n").slice(0, MAX),
+        [limpio, lectura?.texto].filter(Boolean).join("\n\n").slice(0, MAX),
         enlaces,
-        conOculto,
+        enCaptura,
       );
       for (const r of respuestas) añadir(r);
-      if (conOculto)
+
+      // Un enlace sin dirección visible: lo ha visto el modelo en la captura
+      // o las reglas en el texto («pulse aquí»). Se avisa aparte.
+      const resultado = respuestas.find((r) => "resultado" in r)?.resultado;
+      const frase = resultado?.enlaceSinDireccion?.frase;
+      if (enCaptura || resultado?.enlaceSinDireccion)
         añadir({
           autor: "asistente",
           sinDireccion: {
-            palabras: lectura.enlacesOcultos,
-            veredicto: respuestas.find((r) => "resultado" in r)?.resultado
-              .veredicto,
+            palabras: enCaptura
+              ? lectura!.enlacesOcultos
+              : frase
+                ? [frase]
+                : [],
+            veredicto: resultado?.veredicto,
+            enCaptura,
           },
         });
     } finally {
@@ -699,13 +711,16 @@ function LecturaCaptura({ l }: { l: Lectura }) {
   );
 }
 
-// En una imagen, un enlace sobre una palabra no deja ver adónde lleva.
+// Un enlace sobre una palabra («aquí», «Pagar») no deja ver adónde lleva: en
+// una captura no hay dirección que leer, y en un texto copiado se pierde.
 function EnlaceSinDireccion({
   palabras,
   veredicto,
+  enCaptura,
 }: {
   palabras: string[];
   veredicto?: Veredicto;
+  enCaptura: boolean;
 }) {
   const varios = palabras.length > 1;
   const lista = palabras.map((p) => `«${p}»`).join(", ");
@@ -717,9 +732,10 @@ function EnlaceSinDireccion({
           : "Hay un enlace que no puedo comprobar"}
       </p>
       <p>
-        En la captura, {lista} {varios ? "son enlaces" : "es un enlace"}, pero
-        una imagen no muestra adónde {varios ? "llevan" : "lleva"}. No he podido
-        comprobar la dirección.
+        {enCaptura
+          ? `En la captura, ${lista} ${varios ? "son enlaces" : "es un enlace"}, pero una imagen no muestra adónde ${varios ? "llevan" : "lleva"}.`
+          : `El mensaje te manda a un enlace${lista ? ` (${lista})` : ""}, pero no se ve su dirección.`}{" "}
+        No he podido comprobar adónde lleva.
       </p>
       <p>
         {veredicto === "no_oficial"

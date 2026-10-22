@@ -7,9 +7,11 @@
 import lista from "../../datos/dominios-oficiales.json";
 import { noDeterminable, verificarUrl, type Veredicto } from "./verificar-url";
 import {
+  aludeEnlace,
   detectarOrganismo,
   neutralizar,
   patronesContenido,
+  resolverDominiosSueltos,
   resolverEnlaces,
   type Senal,
 } from "./resolver";
@@ -41,6 +43,9 @@ export type MensajeResultado = {
   entidad?: string;
   webOficial?: string;
   fuentes: Source[];
+  // Hay un enlace cuya dirección no se ve: en una captura, o una frase como
+  // «pulse aquí». Trae la frase si la hemos encontrado en el texto.
+  enlaceSinDireccion?: { frase?: string };
 };
 
 const entidadPorNombre = (nombre: string) =>
@@ -53,11 +58,21 @@ export function verificarMensaje(
   tipo: "sms" | "email" = "sms",
   enlaceOculto = false,
 ): MensajeResultado {
-  const enlaces = resolverEnlaces(texto);
+  // Un dominio sin http («www.dgt-pago.com», «bit.ly/x») también se pulsa en
+  // el móvil. Si es oficial, se queda en mención: citarlo no prueba quién
+  // envía el mensaje (ver resolverEnlaces).
+  const sueltos = resolverDominiosSueltos(texto).filter((p) => {
+    const r = verificarUrl(p.url);
+    return "error" in r || r.veredicto !== "oficial_verificado";
+  });
+  const enlaces = [...resolverEnlaces(texto), ...sueltos];
+  // Sin ninguna dirección, una frase como «pulse aquí» delata un enlace oculto.
+  const frase = enlaces.length ? undefined : aludeEnlace(texto);
+  const sinDireccion = enlaceOculto || !!frase;
   const { concluyentes, avisos: senalesAviso } = patronesContenido(
     texto,
     tipo,
-    enlaces.length > 0 || enlaceOculto,
+    enlaces.length > 0 || sinDireccion,
   );
 
   // 1. Cada enlace, por el verificador de webs (sin abrirlo).
@@ -74,9 +89,11 @@ export function verificarMensaje(
   const pasos: string[] = [
     "He leído tu mensaje solo como texto: no he abierto sus enlaces ni he seguido redirecciones.",
   ];
-  if (enlaceOculto)
+  if (sinDireccion)
     pasos.push(
-      "Tiene un enlace escondido tras una palabra: no se ve adónde lleva, así que no lo puedo comprobar, pero cuenta como enlace.",
+      frase
+        ? `Te manda a un enlace («${frase}») pero no se ve su dirección: no lo puedo comprobar, pero cuenta como enlace.`
+        : "Tiene un enlace escondido tras una palabra: no se ve adónde lleva, así que no lo puedo comprobar, pero cuenta como enlace.",
     );
   const avisos: string[] = [];
   const fuentes: Source[] = [INCIBE_AVISOS, INCIBE_017];
@@ -118,6 +135,7 @@ export function verificarMensaje(
     entidad: entidadDatos?.entidad,
     webOficial: entidadDatos?.web_oficial,
     fuentes,
+    ...(sinDireccion && { enlaceSinDireccion: { frase } }),
   };
 
   if (fraudeUrl || concluyentes.length > 0) {

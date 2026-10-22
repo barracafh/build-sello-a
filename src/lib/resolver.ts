@@ -45,6 +45,51 @@ export function resolverEnlaces(texto: string): Patron[] {
   return patrones;
 }
 
+// Terminaciones con las que un dominio sin esquema cuenta como enlace. Los
+// móviles convierten «dgt-multas.com» o «bit.ly/x» en enlace sin http, pero
+// una lista cerrada evita leer como dominio abreviaturas como «p.ej.».
+const TLDS =
+  "com|es|net|org|info|eu|top|xyz|click|link|online|site|website|shop|store|" +
+  "app|live|me|io|co|cc|ly|gl|gd|at|to|ws|cat|gal|eus|biz|icu|vip|buzz|lat|" +
+  "sbs|cfd|bond|help|support|space|fun|club|pro|page|cn|ru|pw|tk|ml|ga|cf|gq|" +
+  "pt|fr|de|it|uk|us";
+const DOMINIO_SUELTO = new RegExp(
+  `(?<![@\\w./:-])((?:[a-z0-9-]+\\.)+(?:${TLDS}))(?![\\w@-])(/[^\\s<>"'»«)\\]]*)?`,
+  "gi",
+);
+
+/**
+ * Dominios escritos sin http ni hxxp («www.dgt-pago.com», «bit.ly/3xYz»).
+ * No incluye los que ya trae resolverEnlaces ni las direcciones de correo.
+ * Quien llama decide si un dominio oficial citado cuenta como enlace.
+ */
+export function resolverDominiosSueltos(texto: string): Patron[] {
+  const sinUrls = desneutralizar(texto).replace(/https?:\/\/[^\s<>"'»«)\]]+/gi, " ");
+  const patrones: Patron[] = [];
+  for (const m of sinUrls.matchAll(DOMINIO_SUELTO)) {
+    const bruto = (m[1] + (m[2] ?? "")).replace(/[.,;:!?¡¿"')\]]+$/, "");
+    const url = `https://${bruto}`;
+    if (!patrones.some((p) => p.url === url))
+      patrones.push({ scheme: "", url, original: neutralizar(bruto) });
+  }
+  return patrones;
+}
+
+/**
+ * Frases que te mandan a un enlace que no se ve: «pulse aquí», «en el
+ * siguiente enlace», o el «[URL fraudulenta]» con que INCIBE tapa la dirección.
+ * Devuelve la frase encontrada, tal cual aparece en el texto.
+ */
+export function aludeEnlace(texto: string): string | undefined {
+  const t = sinAcentos(texto);
+  const m =
+    /\b(pulse|pulsa|pulsar|pinche|pincha|toque|toca|haga clic|haz clic|hacer clic|clic|click|acceda|accede|entre|entra)\b[^.\n]{0,20}?\b(aqui|aca|en el enlace|en este enlace|en el boton|en el link)\b|\b(el siguiente|este|el|del) (enlace|link|boton)\b|\[(url|enlace|link)[^\]]*\]/.exec(
+      t,
+    );
+  // sinAcentos no cambia la longitud del texto: la posición vale para el original.
+  return m ? texto.slice(m.index, m.index + m[0].length) : undefined;
+}
+
 const sinAcentos = (t: string) =>
   t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
