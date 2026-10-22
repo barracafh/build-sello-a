@@ -23,8 +23,8 @@ export default function Home() {
         <p className="mt-6 text-lg text-(--text-secondary)">
           Pega el SMS, el correo o el enlace que dice venir de Tráfico,
           Hacienda, Correos u otro organismo, sube una captura de pantalla o
-          reenvíanoslo por WhatsApp. Te decimos si es la web oficial y cuál es
-          la buena.
+          reenvíanoslo por WhatsApp o Telegram. Te decimos si es la web oficial
+          y cuál es la buena.
         </p>
 
         <div id="comprobar" className="mt-10 scroll-mt-6">
