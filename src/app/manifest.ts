@@ -7,7 +7,7 @@ const base = process.env.NEXT_PUBLIC_BASE_PATH ?? `/${ficha.equipo}`;
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: ficha.nombre,
-    short_name: "Sello",
+    short_name: "Varita",
     description: ficha.frase,
     lang: "es",
     // Sin barra final: el alojamiento sirve la app en /<equipo> y /<equipo>/
