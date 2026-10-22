@@ -1,9 +1,29 @@
 import { Badge } from "@/components/ui/badge";
 import { BotonAviso } from "@/components/BotonAviso";
-import { ChatEstafas } from "@/components/ChatEstafas";
 import { Pestanas } from "@/components/Pestanas";
+import { VerificadorMensaje } from "@/components/VerificadorMensaje";
 import { VerificadorUrl } from "@/components/VerificadorUrl";
 import ficha from "../../ficha.json";
+
+// Qué hace la herramienta, en tres pasos. Es la explicación que ve cualquiera
+// antes de usarla.
+const QUE_HACEMOS = [
+  {
+    titulo: "Pegas lo que has recibido",
+    detalle:
+      "Un SMS, un correo o la dirección de una web que dice venir de la DGT, Hacienda, la Seguridad Social, Correos u otro organismo.",
+  },
+  {
+    titulo: "Lo leemos solo como texto",
+    detalle:
+      "Nunca abrimos los enlaces, no seguimos redirecciones y no guardamos nada de lo que pegas. Comparamos con listas oficiales y con los patrones de fraude que publica INCIBE.",
+  },
+  {
+    titulo: "Te decimos la verdad que sabemos",
+    detalle:
+      "Un veredicto claro con su motivo y, si no es oficial, cuál es la web buena. Si no lo podemos confirmar, lo decimos: un dominio desconocido no es un fraude demostrado.",
+  },
+];
 
 export default function Home() {
   return (
@@ -28,49 +48,84 @@ export default function Home() {
         tabIndex={-1}
         className="mx-auto max-w-[760px] px-(--page-gutter) pt-10 pb-20 outline-none md:pt-14"
       >
-        <Pestanas
-          pestanas={[
-            {
-              id: "web",
-              etiqueta: "Verificar web",
-              contenido: (
-                <>
-                  <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
-                    Verificador de webs
-                  </p>
-                  <h1 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
-                    ¿Esta web es oficial?
-                  </h1>
-                  <p className="mt-6 text-lg text-(--text-secondary)">
-                    Pega la dirección de un SMS, un correo o un aviso que dice
-                    venir de la DGT, Hacienda u otro organismo. Te decimos si es
-                    suya y cuál es la buena.
-                  </p>
-                  <VerificadorUrl />
-                </>
-              ),
-            },
-            {
-              id: "chat",
-              etiqueta: "Chat",
-              contenido: (
-                <>
-                  <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
-                    Mensajes y enlaces
-                  </p>
-                  <h2 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
-                    ¿Este mensaje es de verdad?
-                  </h2>
-                  <p className="mt-6 text-lg text-(--text-secondary)">
-                    Pega un SMS, un correo o una URL que dice venir de un
-                    organismo público y pregúntanos.
-                  </p>
-                  <ChatEstafas />
-                </>
-              ),
-            },
-          ]}
-        />
+        <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
+          {ficha.frase}
+        </p>
+        <h1 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
+          ¿Ese SMS o esa web es oficial de verdad?
+        </h1>
+        <p className="mt-6 text-lg text-(--text-secondary)">
+          Cada semana se suplanta a la DGT, a Hacienda o a Correos para robar
+          datos y dinero. Comprueba aquí el mensaje o el enlace antes de
+          confiar, y te decimos cuál es la web buena si no lo es.
+        </p>
+
+        {/* Qué hacemos, en tres pasos */}
+        <ol className="mt-10 grid gap-8">
+          {QUE_HACEMOS.map((paso, i) => (
+            <li
+              key={paso.titulo}
+              className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-3 md:grid-cols-[44px_minmax(0,1fr)] md:gap-x-5"
+            >
+              <span className="text-[26px] leading-[1.1] font-light text-brand tabular-nums md:text-[34px]">
+                {i + 1}
+              </span>
+              <div>
+                <h2 className="text-lg font-medium">{paso.titulo}</h2>
+                <p className="mt-1 text-[15px] text-(--text-secondary)">
+                  {paso.detalle}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div className="mt-12">
+          <Pestanas
+            pestanas={[
+              {
+                id: "sms",
+                etiqueta: "SMS o correo",
+                contenido: (
+                  <>
+                    <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
+                      Verificador de mensajes
+                    </p>
+                    <h2 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
+                      ¿Este mensaje es de verdad?
+                    </h2>
+                    <p className="mt-6 text-lg text-(--text-secondary)">
+                      Pega el SMS o el correo que te ha llegado. Miramos sus
+                      enlaces y sus señales de fraude, y te decimos cuál es la
+                      web oficial buena.
+                    </p>
+                    <VerificadorMensaje />
+                  </>
+                ),
+              },
+              {
+                id: "web",
+                etiqueta: "Web",
+                contenido: (
+                  <>
+                    <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
+                      Verificador de webs
+                    </p>
+                    <h2 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
+                      ¿Esta web es oficial?
+                    </h2>
+                    <p className="mt-6 text-lg text-(--text-secondary)">
+                      Pega la dirección de un SMS, un correo o un aviso que dice
+                      venir de la DGT, Hacienda u otro organismo. Te decimos si
+                      es suya y cuál es la buena.
+                    </p>
+                    <VerificadorUrl />
+                  </>
+                ),
+              },
+            ]}
+          />
+        </div>
       </main>
 
       <footer className="p-2">
