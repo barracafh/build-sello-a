@@ -15,6 +15,11 @@ import {
   resolverEnlaces,
   type Senal,
 } from "./resolver";
+import {
+  analizarRemitente,
+  remitenteDelTexto,
+  type AnalisisRemitente,
+} from "./remitente";
 import type { Source } from "@/components/Fuentes";
 
 const INCIBE_AVISOS: Source = {
@@ -46,6 +51,8 @@ export type MensajeResultado = {
   // Hay un enlace cuya dirección no se ve: en una captura, o una frase como
   // «pulse aquí». Trae la frase si la hemos encontrado en el texto.
   enlaceSinDireccion?: { frase?: string };
+  // Quién lo envía, si se ve: de la captura o de una línea «De:».
+  remitente?: AnalisisRemitente;
 };
 
 const entidadPorNombre = (nombre: string) =>
@@ -53,10 +60,13 @@ const entidadPorNombre = (nombre: string) =>
 
 // `enlaceOculto`: en una captura de pantalla se ve una palabra con enlace
 // («aquí», «Pagar») pero no su dirección. Cuenta como enlace para las reglas.
+// `remitente`: el que se ve arriba en una captura; si no llega, se busca una
+// línea «De:» en el texto.
 export function verificarMensaje(
   texto: string,
   tipo: "sms" | "email" = "sms",
   enlaceOculto = false,
+  remitente?: string,
 ): MensajeResultado {
   // Un dominio sin http («www.dgt-pago.com», «bit.ly/x») también se pulsa en
   // el móvil. Si es oficial, se queda en mención: citarlo no prueba quién
@@ -74,6 +84,22 @@ export function verificarMensaje(
     tipo,
     enlaces.length > 0 || sinDireccion,
   );
+
+  // El remitente frente a lo que dice el mensaje: un número extranjero que
+  // habla de multas decide; un móvil o un correo ajeno suman como aviso.
+  const deQuien = remitente?.trim() || remitenteDelTexto(texto);
+  const analisisRemitente = deQuien
+    ? analizarRemitente(
+        deQuien,
+        texto,
+        detectarOrganismo(texto)?.nombre,
+        enlaces.length > 0 || sinDireccion,
+      )
+    : undefined;
+  if (analisisRemitente?.peso === "fraude")
+    concluyentes.push({ code: analisisRemitente.code!, detalle: analisisRemitente.explicacion });
+  if (analisisRemitente?.peso === "aviso")
+    senalesAviso.push({ code: analisisRemitente.code!, detalle: analisisRemitente.explicacion });
 
   // 1. Cada enlace, por el verificador de webs (sin abrirlo).
   const analizados: { enlace: string; resultado: ReturnType<typeof verificarUrl> }[] = [];
@@ -136,6 +162,7 @@ export function verificarMensaje(
     webOficial: entidadDatos?.web_oficial,
     fuentes,
     ...(sinDireccion && { enlaceSinDireccion: { frase } }),
+    ...(analisisRemitente && { remitente: analisisRemitente }),
   };
 
   if (fraudeUrl || concluyentes.length > 0) {

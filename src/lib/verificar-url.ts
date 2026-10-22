@@ -50,7 +50,8 @@ const ACORTADORES = new Set([
   "bit.ly", "bitly.com", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "is.gd",
   "v.gd", "x.gd", "buff.ly", "cutt.ly", "rebrand.ly", "shorturl.at", "s.id",
   "t.ly", "rb.gy", "tiny.cc", "lnkd.in", "qrco.de", "short.gy", "bl.ink",
-  "acortar.link", "urlz.fr",
+  "acortar.link", "urlz.fr", "ln.run", "bit.do", "u.to", "cli.re", "l.ead.me",
+  "shorturl.gg", "spoo.me", "tinu.be", "rebrandly.com",
 ]);
 
 // TLD baratos o exóticos de las campañas publicadas (contexto.md, 1.4). Son

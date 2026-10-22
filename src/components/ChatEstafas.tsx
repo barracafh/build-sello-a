@@ -19,6 +19,7 @@ import { ComoComprobamos } from "@/components/ComoComprobamos";
 import { Fuentes, type Source } from "@/components/Fuentes";
 import { enlacesDe, type Enlace } from "@/components/VerificadorUrl";
 import { ruta } from "@/config/sitio";
+import { resolverDominiosSueltos, resolverEnlaces } from "@/lib/resolver";
 import ficha from "../../ficha.json";
 
 type Veredicto = "oficial_verificado" | "no_oficial" | "no_determinable";
@@ -37,6 +38,14 @@ export type ResultadoChat = {
   urlNeutralizada?: string;
   // Solo en los mensajes: hay un enlace sin dirección visible («pulse aquí»).
   enlaceSinDireccion?: { frase?: string };
+  // Solo en los mensajes: los enlaces encontrados, ya neutralizados.
+  enlaces?: { neutralizado: string }[];
+  // Solo en los mensajes: quién lo envía y qué concluimos de ello.
+  remitente?: {
+    valor: string;
+    explicacion: string;
+    peso: "fraude" | "aviso" | "neutro";
+  };
   fuentes: Source[];
 };
 
@@ -67,7 +76,11 @@ type Contenido =
         enCaptura: boolean;
       };
     }
-  | { autor: "asistente"; resultado: ResultadoChat }
+  | {
+      autor: "asistente";
+      resultado: ResultadoChat;
+      etiqueta?: "mensaje" | "enlace";
+    }
   | { autor: "asistente"; enlaces: ResultadoEnlaces };
 
 type Mensaje = Contenido & { id: number; hora?: string };
@@ -117,6 +130,12 @@ const EJEMPLOS: {
       },
       { texto: "Pagar ahora", href: "https://dgt-expedientes-pago.top/pago" },
     ],
+  },
+  // +44 7700 900xxx es un rango que Ofcom reserva para ficción: no es de nadie.
+  {
+    etiqueta: "SMS desde un número extranjero",
+    texto:
+      "De: +44 7700 900123\nDGT: Tiene una multa pendiente. Evite el recargo y abónela hoy en dgt-multas-pago[.]top/pago",
   },
   // SMS inventado, con el enlace escondido en «aquí».
   { etiqueta: "Captura de un SMS", captura: "/ejemplos/captura-sms-dgt.png" },
@@ -177,46 +196,99 @@ async function pedir<T>(ruta_: string, cuerpo: object): Promise<T> {
 // además comprueba en DNS los *.gob.es. Lo demás es un SMS o un correo.
 // Si al pegar venían enlaces escondidos (el HTML de un correo), se comprueba
 // también adónde llevan de verdad, como en la pestaña Web.
+// Con menos palabras que esto fuera de las direcciones, lo pegado es solo un
+// enlace («mira: bit.ly/x») y se analiza solo el enlace.
+const PALABRAS_MENSAJE = 4;
+const pareceDireccion = (palabra: string) =>
+  /^(h(tt|xx)ps?:|www\.)|[a-z0-9](\.|\[\.\])[a-z]/i.test(palabra);
+
+// Qué analizar de lo que ha llegado:
+// - solo un enlace: el verificador de webs (que además mira en DNS los *.gob.es);
+// - un mensaje: el verificador de mensajes y, aparte, cada enlace que traiga;
+// - enlaces escondidos al pegar un correo (HTML): adónde llevan de verdad.
 async function analizar(
   texto: string,
-  ocultos: Enlace[],
-  enlaceOculto = false,
+  {
+    ocultos = [],
+    enlaceOculto = false,
+    remitente,
+  }: { ocultos?: Enlace[]; enlaceOculto?: boolean; remitente?: string } = {},
 ): Promise<Contenido[]> {
-  const esUrl = !/\s/.test(texto) && !enlaceOculto;
-  const esCorreo = /^\s*(asunto|de|from|subject)\s*:/im.test(texto);
-  const tareas: Promise<Contenido>[] = [];
-  if (!(esUrl && ocultos.length))
-    tareas.push(
-      esUrl
-        ? pedir<ResultadoChat>("/api/verificar-url", { texto }).then(
-            (resultado) => ({
-              autor: "asistente" as const,
-              resultado,
-            }),
-          )
-        : pedir<ResultadoChat>("/api/verificar-mensaje", {
-            texto,
-            tipo: esCorreo ? "email" : "sms",
-            enlaceOculto,
-          }).then((resultado) => ({ autor: "asistente" as const, resultado })),
+  const palabras = texto.split(/\s+/).filter((p) => p && !pareceDireccion(p));
+  const esMensaje = enlaceOculto || palabras.length >= PALABRAS_MENSAJE;
+  const esCorreo = /^\s*(asunto|de|from|subject)\s*:\s*\S+@/im.test(texto);
+
+  const tareas: (() => Promise<Contenido[]>)[] = [];
+  const delEnlace = (direccion: string) =>
+    pedir<ResultadoChat>("/api/verificar-url", { texto: direccion }).then(
+      (resultado): Contenido => ({
+        autor: "asistente",
+        resultado,
+        etiqueta: "enlace",
+      }),
     );
-  if (ocultos.length)
-    tareas.push(
-      pedir<ResultadoEnlaces>("/api/verificar-url", { enlaces: ocultos }).then(
-        (enlaces) => ({ autor: "asistente" as const, enlaces }),
+
+  if (esMensaje)
+    tareas.push(async () => {
+      const resultado = await pedir<ResultadoChat>("/api/verificar-mensaje", {
+        texto,
+        tipo: esCorreo ? "email" : "sms",
+        enlaceOculto,
+        remitente,
+      });
+      const enlaces = (resultado.enlaces ?? []).slice(0, 3);
+      const porEnlace = await Promise.allSettled(
+        enlaces.map((e) => delEnlace(e.neutralizado)),
+      );
+      return [
+        {
+          autor: "asistente",
+          resultado,
+          etiqueta: enlaces.length ? "mensaje" : undefined,
+        },
+        ...porEnlace.flatMap((h) =>
+          h.status === "fulfilled" ? [h.value] : [],
+        ),
+      ];
+    });
+  else if (!ocultos.length) {
+    const direcciones = [
+      ...new Set(
+        [...resolverEnlaces(texto), ...resolverDominiosSueltos(texto)].map(
+          (e) => e.original,
+        ),
       ),
-    );
-  const hechas = await Promise.allSettled(tareas);
-  return hechas.map((h) =>
+    ].slice(0, 3);
+    if (!direcciones.length) direcciones.push(texto);
+    for (const d of direcciones)
+      tareas.push(async () => {
+        const r = await delEnlace(d);
+        return [{ ...r, etiqueta: undefined }];
+      });
+  }
+  if (ocultos.length)
+    tareas.push(async () => [
+      {
+        autor: "asistente",
+        enlaces: await pedir<ResultadoEnlaces>("/api/verificar-url", {
+          enlaces: ocultos,
+        }),
+      },
+    ]);
+
+  const hechas = await Promise.allSettled(tareas.map((t) => t()));
+  return hechas.flatMap((h): Contenido[] =>
     h.status === "fulfilled"
       ? h.value
-      : {
-          autor: "asistente",
-          texto:
-            h.reason instanceof Error
-              ? h.reason.message
-              : "No he podido comprobarlo. Inténtalo de nuevo.",
-        },
+      : [
+          {
+            autor: "asistente",
+            texto:
+              h.reason instanceof Error
+                ? h.reason.message
+                : "No he podido comprobarlo. Inténtalo de nuevo.",
+          },
+        ],
   );
 }
 
@@ -341,8 +413,11 @@ export function ChatEstafas() {
       const enCaptura = !!lectura?.enlacesOcultos.length;
       const respuestas = await analizar(
         [limpio, lectura?.texto].filter(Boolean).join("\n\n").slice(0, MAX),
-        enlaces,
-        enCaptura,
+        {
+          ocultos: enlaces,
+          enlaceOculto: enCaptura,
+          remitente: lectura?.remitente ?? undefined,
+        },
       );
       for (const r of respuestas) añadir(r);
 
@@ -369,14 +444,21 @@ export function ChatEstafas() {
     }
   }
 
-  async function enviarEjemplo(ejemplo: (typeof EJEMPLOS)[number]) {
-    if (!ejemplo.captura)
-      return enviar(undefined, ejemplo.texto ?? "", ejemplo.enlaces ?? []);
-    const imagen = await fetch(ruta(ejemplo.captura))
-      .then((r) => r.blob())
-      .then(reducirImagen)
-      .catch(() => undefined);
-    if (imagen) enviar(undefined, "", [], imagen);
+  // Un ejemplo se carga en la caja: se envía a mano, para enseñarlo paso a paso.
+  async function cargarEjemplo(ejemplo: (typeof EJEMPLOS)[number]) {
+    setTexto(ejemplo.texto ?? "");
+    setOcultos(ejemplo.enlaces ?? []);
+    setAdjunto(undefined);
+    setErrorAdjunto(undefined);
+    if (ejemplo.captura) {
+      const imagen = await fetch(ruta(ejemplo.captura))
+        .then((r) => r.blob())
+        .then(reducirImagen)
+        .catch(() => undefined);
+      if (imagen) setAdjunto(imagen);
+      else setErrorAdjunto("No he podido cargar la captura de ejemplo.");
+    }
+    caja.current?.focus();
   }
 
   // Intro envía; Mayús + Intro hace un salto de línea.
@@ -452,7 +534,7 @@ export function ChatEstafas() {
             ) : (
               <BurbujaAsistente key={m.id} hora={m.hora}>
                 {"resultado" in m ? (
-                  <Resultado r={m.resultado} />
+                  <Resultado r={m.resultado} etiqueta={m.etiqueta} />
                 ) : "enlaces" in m ? (
                   <ResultadoDeEnlaces r={m.enlaces} />
                 ) : "lectura" in m ? (
@@ -493,7 +575,7 @@ export function ChatEstafas() {
                   variant="outline"
                   size="sm"
                   className="rounded-full"
-                  onClick={() => enviarEjemplo(ejemplo)}
+                  onClick={() => cargarEjemplo(ejemplo)}
                 >
                   {ejemplo.etiqueta}
                 </Button>
@@ -820,10 +902,31 @@ function WebOficial({ url, entidad }: { url?: string; entidad?: string }) {
   );
 }
 
-function Resultado({ r }: { r: ResultadoChat }) {
+const ETIQUETA_ANALISIS = {
+  mensaje: "Análisis del mensaje",
+  enlace: "Análisis del enlace",
+} as const;
+
+function Resultado({
+  r,
+  etiqueta,
+}: {
+  r: ResultadoChat;
+  etiqueta?: "mensaje" | "enlace";
+}) {
+  // La conclusión sobre el remitente se enseña en su tarjeta, no repetida
+  // entre los pasos ni en «Qué hacer».
+  const delRemitente = r.remitente?.explicacion;
+  const pasos = r.pasos.filter((p) => p !== delRemitente);
+  const avisos = r.avisos.filter((a) => a !== delRemitente);
   return (
     <div className="grid gap-4 py-1">
       <div>
+        {etiqueta && (
+          <p className="mb-2 font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
+            {ETIQUETA_ANALISIS[etiqueta]}
+          </p>
+        )}
         <Cabecera veredicto={r.veredicto} titular={r.titular} />
         {r.entidad && (
           <p className="mt-1 text-(--text-secondary)">
@@ -843,8 +946,10 @@ function Resultado({ r }: { r: ResultadoChat }) {
         )}
       </div>
 
+      {r.remitente && <Remitente {...r.remitente} />}
+
       <ol className="grid gap-2">
-        {r.pasos.map((paso, i) => (
+        {pasos.map((paso, i) => (
           <li
             key={paso}
             className="grid grid-cols-[20px_minmax(0,1fr)] gap-x-2"
@@ -855,9 +960,39 @@ function Resultado({ r }: { r: ResultadoChat }) {
         ))}
       </ol>
 
-      <QueHacer veredicto={r.veredicto} consejo={r.consejo} avisos={r.avisos} />
+      <QueHacer veredicto={r.veredicto} consejo={r.consejo} avisos={avisos} />
       <WebOficial url={r.webOficial} entidad={r.entidad} />
       <Fuentes fuentes={r.fuentes} />
+    </div>
+  );
+}
+
+const PESO_REMITENTE = {
+  fraude: { texto: "Señal de fraude", variante: "destructive" },
+  aviso: { texto: "Sospechoso", variante: "outline" },
+  neutro: { texto: "No lo confirma", variante: "secondary" },
+} as const;
+
+// Quién envía el mensaje y qué peso ha tenido en el veredicto.
+function Remitente({
+  valor,
+  explicacion,
+  peso,
+}: {
+  valor: string;
+  explicacion: string;
+  peso: "fraude" | "aviso" | "neutro";
+}) {
+  return (
+    <div className="grid gap-1 rounded-xl p-4 ring-1 ring-foreground/10">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-(--text-secondary)">Remitente</p>
+        <Badge variant={PESO_REMITENTE[peso].variante}>
+          {PESO_REMITENTE[peso].texto}
+        </Badge>
+      </div>
+      <p className="font-mono [overflow-wrap:anywhere]">{valor}</p>
+      <p>{explicacion}</p>
     </div>
   );
 }
