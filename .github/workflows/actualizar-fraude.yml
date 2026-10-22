@@ -1,0 +1,56 @@
+# Cada día descarga la lista de phishing activo de Phishing.Database, se queda
+# con los dominios que imitan a organismos españoles y, si ha cambiado, la sube
+# a main. El push publica la herramienta, como cualquier otro.
+name: Actualizar dominios de fraude
+
+on:
+  schedule:
+    - cron: "0 4 * * *" # 04:00 UTC, de madrugada en España
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: actualizar-fraude
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Filtrar la lista
+        run: bun scripts/actualizar-fraude.ts
+
+      - name: ¿Ha cambiado?
+        id: cambios
+        run: |
+          if git diff --quiet -- src/datos/dominios-fraude.json; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Sin build verde no se publica (AGENTS.md).
+      - name: Comprobar el build
+        if: steps.cambios.outputs.hay == 'si'
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Subir a main
+        if: steps.cambios.outputs.hay == 'si'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/datos/dominios-fraude.json
+          git commit -m "chore: update phishing domain list"
+          git pull --rebase
+          git push

@@ -3,6 +3,7 @@
 // Pasos de contexto.md, apartado 5.2, sin la PSL completa ni el TLS.
 import { domainToUnicode } from "node:url";
 import lista from "../../datos/dominios-oficiales.json";
+import fraudes from "../datos/dominios-fraude.json";
 import type { Source } from "@/components/Fuentes";
 
 export type Veredicto = "oficial_verificado" | "no_oficial" | "no_determinable";
@@ -34,6 +35,14 @@ const INCIBE_017: Source = {
   url: "https://www.incibe.es/linea-de-ayuda-en-ciberseguridad",
 };
 const PAG = "https://administracion.gob.es";
+// Fuente comunitaria, no oficial: se cita como origen del dato junto a INCIBE.
+const FUENTE_FRAUDES: Source = {
+  nombre: `${fraudes.origen} · lista comunitaria de phishing activo (licencia ${fraudes.licencia})`,
+  url: fraudes.repositorio,
+};
+const fechaFraudes = fraudes.actualizado
+  ? new Date(fraudes.actualizado).toLocaleDateString("es-ES", { timeZone: "UTC" })
+  : "fecha desconocida";
 
 const ACORTADORES = new Set([
   "bit.ly", "bitly.com", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "is.gd",
@@ -47,7 +56,7 @@ const ACORTADORES = new Set([
 const PLATAFORMAS = ["sede.gob.es", "sedelectronica.es", "sedipualba.es", "sede.dival.es"];
 
 // Marcas que suplantan las campañas publicadas (contexto.md, 5.2 paso 10).
-const MARCAS: Record<string, string> = {
+export const MARCAS: Record<string, string> = {
   agenciatributaria: "Agencia Tributaria (AEAT)",
   aeat: "Agencia Tributaria (AEAT)",
   hacienda: "Agencia Tributaria (AEAT)",
@@ -301,6 +310,19 @@ export function verificarUrl(texto: string): Resultado | { error: string } {
       porNombre(marca.entidad),
     );
 
+  // Paso 11: lista comunitaria de phishing activo, actualizada cada día. Va
+  // después de la lista oficial: solo puede decir «no oficial», nunca «oficial».
+  if (fraudes.dominios.some((d) => termina(host, d))) {
+    const suplantada = Object.entries(MARCAS).find(([m]) => m.length >= 5 && host.includes(m));
+    const r = fraude(
+      "lista_phishing",
+      `Aparece en una lista pública de webs de phishing activas (${fraudes.origen}, actualizada el ${fechaFraudes}).`,
+      suplantada && porNombre(suplantada[1]),
+    );
+    r.fuentes.push(FUENTE_FRAUDES);
+    return r;
+  }
+
   // Paso 12: desconocido no es lo mismo que fraude.
   pasos.push(
     "No está en la lista de dominios oficiales ni tiene señales de fraude. Puede ser legítimo, pero no lo puedo confirmar.",
@@ -313,4 +335,113 @@ export function verificarUrl(texto: string): Resultado | { error: string } {
     consejo: noDeterminable(),
     fuentes: [INCIBE_AVISOS, INCIBE_017],
   };
+}
+
+// Enlaces de un correo copiado: el texto que se ve y la dirección real (href).
+export type Enlace = { texto: string; href: string };
+export type EnlaceVerificado = { texto: string; resultado: Resultado };
+export type ResultadoEnlaces = {
+  veredicto: Veredicto;
+  titular: string;
+  enlaces: EnlaceVerificado[];
+};
+
+const conEsquema = (c: string) =>
+  /^[a-z][a-z0-9+.-]*:\/\//i.test(c) ? c : `https://${c}`;
+
+function hostDe(texto: string) {
+  const candidata = extraer(texto);
+  if (!candidata) return;
+  try {
+    return new URL(conEsquema(candidata)).hostname.replace(/\.$/, "");
+  } catch {}
+}
+
+const enLista = (host: string) =>
+  dominios
+    .filter(({ dominio }) => termina(host, dominio))
+    .sort((a, b) => b.dominio.length - a.dominio.length)[0]?.entidad;
+
+// Outlook y Google envuelven los enlaces: el destino va dentro, como parámetro.
+// Se lee del texto; no se visita ninguna de las dos.
+function desenvolver(href: string) {
+  try {
+    const url = new URL(href);
+    const destino = url.hostname.endsWith("safelinks.protection.outlook.com")
+      ? url.searchParams.get("url")
+      : /(^|\.)google\.[a-z.]+$/.test(url.hostname) && url.pathname === "/url"
+        ? url.searchParams.get("q") ?? url.searchParams.get("url")
+        : null;
+    if (destino && /^https?:\/\//i.test(destino))
+      return { url: destino, envoltorio: url.hostname };
+  } catch {}
+  return { url: href };
+}
+
+const GRAVEDAD: Record<Veredicto, number> = {
+  oficial_verificado: 0,
+  no_determinable: 1,
+  no_oficial: 2,
+};
+
+export function verificarEnlaces(enlaces: Enlace[]): ResultadoEnlaces | { error: string } {
+  const vistos = new Set<string>();
+  const verificados: EnlaceVerificado[] = [];
+
+  for (const { texto, href } of enlaces) {
+    if (!/^https?:\/\//i.test(href) || vistos.has(href)) continue;
+    vistos.add(href);
+    const destino = desenvolver(href);
+    const r = verificarUrl(destino.url);
+    if ("error" in r) continue;
+
+    const visible = texto.trim().replace(/\s+/g, " ").slice(0, 120);
+    const real = new URL(destino.url).hostname.replace(/\.$/, "");
+    const hostVisible = hostDe(visible);
+    if (destino.envoltorio)
+      r.pasos.splice(1, 0, `Venía envuelto por ${neutralizar(destino.envoltorio)}; he leído el destino que lleva dentro.`);
+
+    if (hostVisible && hostVisible !== real && !termina(real, hostVisible)) {
+      const trampa = `El texto dice ${neutralizar(hostVisible)}, pero el enlace lleva a ${neutralizar(real)}.`;
+      if (r.veredicto === "oficial_verificado") r.avisos.push(trampa);
+      else {
+        // Lo más claro del phishing: enseña una web y te lleva a otra.
+        const suplantada = enLista(hostVisible);
+        // Ya no es «puede ser legítimo»: el disfraz es la señal de fraude.
+        if (r.motivo === "desconocido") r.pasos.pop();
+        Object.assign(r, {
+          veredicto: "no_oficial",
+          motivo: "enlace_enmascarado",
+          titular: "No es una web oficial",
+          consejo: undefined,
+          pasos: [...r.pasos, `${trampa} Es la trampa típica del phishing.`],
+          ...(suplantada && {
+            entidad: suplantada.entidad,
+            webOficial: suplantada.web_oficial,
+            fuentes: [...fuentesDe(suplantada), INCIBE_AVISOS, INCIBE_017],
+          }),
+        });
+      }
+    } else if (!hostVisible && visible)
+      r.pasos.splice(1, 0, `El texto «${visible}» esconde esta dirección.`);
+
+    verificados.push({ texto: visible || "(sin texto)", resultado: r });
+    if (verificados.length === 20) break;
+  }
+
+  if (!verificados.length)
+    return { error: "No encuentro enlaces web en lo que has pegado." };
+
+  const peor = verificados.reduce((a, b) =>
+    GRAVEDAD[b.resultado.veredicto] > GRAVEDAD[a.resultado.veredicto] ? b : a,
+  ).resultado.veredicto;
+  const uno = verificados.length === 1;
+  const titular = {
+    no_oficial: uno ? "El enlace no es oficial" : "Hay enlaces que no son oficiales",
+    no_determinable: uno
+      ? "No he podido confirmar que el enlace sea oficial"
+      : "No he podido confirmar que todos los enlaces sean oficiales",
+    oficial_verificado: uno ? "El enlace lleva a una web oficial" : "Todos los enlaces llevan a webs oficiales",
+  }[peor];
+  return { veredicto: peor, titular, enlaces: verificados };
 }
