@@ -198,6 +198,7 @@ Un solo endpoint genérico, más los dos alias de siempre:
 | `POST /api/verificar`   | `{"entrada": "…", "tipo": "url" \| "web" \| "sms" \| "email"}` | El recomendado. `web` es alias de `url`. |
 | `POST /api/verificar-url`  | `{"texto": "…"}`                               | Alias de compatibilidad de `url`.                  |
 | `POST /api/verificar-mensaje` | `{"texto": "…", "tipo": "sms" \| "email"}`  | Alias de compatibilidad de `sms`/`email`.          |
+| `POST /api/verificar-captura` | `{"image": "data:image/png;base64,…"}`      | Captura de pantalla de un SMS o correo. La IA SOLO transcribe (con el prefijo controlado `[TIPO:sms]`/`[TIPO:email]`); el veredicto lo deciden las reglas deterministas. Devuelve la misma respuesta que `/api/verificar` más `transcripcion` y `tipo`. PNG/JPG/WebP de menos de 3 MB; `[SIN TEXTO]` sale 422 y un fallo de IA, 502. Ni la imagen ni el texto se guardan.
 
 Los tres devuelven la misma forma de respuesta (`veredicto`, `motivo`,
 `titular`, `pasos`, `avisos`, `fuentes`, …) porque los tres pasan por

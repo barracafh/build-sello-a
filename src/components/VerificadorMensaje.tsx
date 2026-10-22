@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type DragEvent, type FormEvent } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Fuentes, type Source } from "@/components/Fuentes";
 import { ruta } from "@/config/sitio";
+import { reducirImagen } from "@/lib/reducir-imagen";
 
 type Enlace = { neutralizado: string; veredicto: string; motivo: string };
 
@@ -22,6 +23,9 @@ type Resultado = {
   entidad?: string;
   webOficial?: string;
   fuentes: Source[];
+  // Solo en el resultado de una captura: lo que la IA ha leído.
+  transcripcion?: string;
+  tipo?: "sms" | "email";
 };
 
 const ETIQUETAS = {
@@ -54,9 +58,15 @@ export function VerificadorMensaje() {
   const [resultado, setResultado] = useState<Resultado>();
   const [error, setError] = useState<string>();
   const [cargando, setCargando] = useState(false);
+  // Lo que se leyó de la última captura (editable): si hay texto aquí, la
+  // respuesta muestra el bloque «lo que he leído», aunque el veredicto venga
+  // de una corrección reenviada a /api/verificar.
+  const [lectura, setLectura] = useState<string>();
+  const [leyendoCaptura, setLeyendoCaptura] = useState(false);
+  const [arrastrando, setArrastrando] = useState(false);
+  const entradaArchivo = useRef<HTMLInputElement>(null);
 
-  async function comprobar(e?: FormEvent, valor = texto) {
-    e?.preventDefault();
+  async function comprobarTexto(valor: string) {
     if (!valor.trim()) return;
     setCargando(true);
     setError(undefined);
@@ -72,10 +82,61 @@ export function VerificadorMensaje() {
         setError(data.error ?? "No he podido comprobarlo. Inténtalo de nuevo.");
       } else setResultado(data);
     } catch {
+      setResultado(undefined);
       setError("No he podido comprobarlo. Inténtalo de nuevo.");
     } finally {
       setCargando(false);
     }
+  }
+
+  async function comprobar(e?: FormEvent, valor = texto) {
+    e?.preventDefault();
+    setLectura(undefined); // viene del formulario manual, no de una captura
+    await comprobarTexto(valor);
+  }
+
+  // El gesto natural: la gente recibe el SMS como captura de WhatsApp, no
+  // como texto. La imagen se reduce en el navegador y no se guarda en ningún
+  // sitio: vive solo en la petición.
+  async function subirCaptura(archivo: File | undefined) {
+    if (!archivo) return;
+    setLeyendoCaptura(true);
+    setError(undefined);
+    setResultado(undefined);
+    try {
+      const imagen = await reducirImagen(archivo);
+      const res = await fetch(ruta("/api/verificar-captura"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ image: imagen }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(
+          data.error ??
+            "No he podido leer la captura. Inténtalo de nuevo o pega el texto a mano.",
+        );
+      } else {
+        setResultado(data);
+        setLectura(data.transcripcion);
+        if (data.tipo === "sms" || data.tipo === "email") setTipo(data.tipo);
+      }
+    } catch {
+      setError(
+        "No he podido leer la captura. Inténtalo de nuevo o pega el texto a mano.",
+      );
+    } finally {
+      if (entradaArchivo.current) entradaArchivo.current.value = "";
+      setLeyendoCaptura(false);
+      setArrastrando(false);
+    }
+  }
+
+  function soltar(e: DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    setArrastrando(false);
+    subirCaptura(e.dataTransfer.files[0]);
   }
 
   return (
@@ -123,19 +184,74 @@ export function VerificadorMensaje() {
           />
         </div>
 
+        {/* O sube una captura: el gesto natural si el mensaje llegó como
+            imagen (captura de WhatsApp). La IA solo lee el texto; el
+            veredicto lo deciden las mismas reglas que con el texto pegado. */}
+        <div className="grid gap-2">
+          <p className="text-base font-medium">
+            O sube una captura de pantalla
+          </p>
+          <label
+            onDragOver={(e) => {
+              e.preventDefault();
+              setArrastrando(true);
+            }}
+            onDragLeave={() => setArrastrando(false)}
+            onDrop={soltar}
+            className={cn(
+              "flex cursor-pointer flex-col items-center gap-1 rounded-(--radius) border border-dashed px-6 py-6 text-center",
+              "motion-safe:transition-colors",
+              arrastrando
+                ? "border-brand bg-accent"
+                : "border-border hover:bg-muted/50",
+              "focus-within:ring-3 focus-within:ring-ring/50 focus-within:border-ring outline-none",
+            )}
+          >
+            <input
+              ref={entradaArchivo}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="sr-only"
+              onChange={(e) => subirCaptura(e.target.files?.[0])}
+              disabled={leyendoCaptura}
+            />
+            <span aria-hidden="true" className="text-brand">
+              ⤒
+            </span>
+            <span>
+              {leyendoCaptura
+                ? "Leyendo la captura…"
+                : arrastrando
+                  ? "Suéltala aquí"
+                  : "Arrastra la imagen aquí o pulsa para elegirla"}
+            </span>
+            <span className="text-sm text-(--text-secondary)">
+              PNG, JPG o WebP. No se guarda nada: la imagen solo se lee.
+            </span>
+          </label>
+          {leyendoCaptura && (
+            <p
+              role="status"
+              className="text-[15px] text-(--text-secondary)"
+            >
+              Leyendo la captura con IA. Puede tardar unos segundos.
+            </p>
+          )}
+        </div>
+
         <Button
           type="submit"
           variant="sunset"
           size="lg"
-          disabled={cargando}
+          disabled={cargando || leyendoCaptura}
           className="h-12 px-6 text-base max-md:w-full md:justify-self-start"
         >
           {cargando ? "Pasando la varita…" : "Pasar la varita"}
         </Button>
 
         <p className="text-[15px] text-(--text-secondary)">
-          No abrimos los enlaces del mensaje ni guardamos lo que pegas: solo
-          leemos el texto.
+          No abrimos los enlaces del mensaje ni guardamos lo que pegas o subes:
+          solo leemos el texto.
         </p>
 
         <div className="flex flex-wrap items-center gap-2 text-[15px]">
@@ -160,13 +276,36 @@ export function VerificadorMensaje() {
 
       <div aria-live="polite" className="mt-12">
         {error && <p className="text-lg">{error}</p>}
-        {resultado && <Respuesta r={resultado} />}
+        {resultado && (
+          <Respuesta
+            r={resultado}
+            lectura={lectura}
+            alCambiarLectura={setLectura}
+            alCorregir={async () => {
+              if (!lectura?.trim()) return;
+              await comprobarTexto(lectura);
+            }}
+            corrigiendo={cargando}
+          />
+        )}
       </div>
     </>
   );
 }
 
-function Respuesta({ r }: { r: Resultado }) {
+function Respuesta({
+  r,
+  lectura,
+  alCambiarLectura,
+  alCorregir,
+  corrigiendo,
+}: {
+  r: Resultado;
+  lectura?: string;
+  alCambiarLectura: (texto: string) => void;
+  alCorregir: () => void;
+  corrigiendo: boolean;
+}) {
   const etiqueta = ETIQUETAS[r.veredicto];
   return (
     <section aria-labelledby="veredicto-mensaje" className="text-lg [&>*+*]:mt-8">
@@ -186,6 +325,40 @@ function Respuesta({ r }: { r: Resultado }) {
           </p>
         )}
       </div>
+
+      {/* Lo que la IA leyó de la captura: visible y corregible, porque el
+          veredicto sale de este texto y la lectura puede fallar. */}
+      {lectura !== undefined && (
+        <Card render={<section />} className="gap-3 bg-muted px-6 py-6 text-base ring-0">
+          <h3 className="text-sm font-medium text-(--text-secondary)">
+            Esto es lo que he leído en la captura
+          </h3>
+          <blockquote className="border-l-2 border-border pl-4">
+            <Textarea
+              aria-label="Texto leído de la captura, editable"
+              value={lectura}
+              onChange={(e) => alCambiarLectura(e.target.value)}
+              rows={4}
+              className="min-h-20 resize-y bg-transparent px-0 py-0 text-base md:text-base"
+            />
+          </blockquote>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={alCorregir}
+              disabled={corrigiendo || !lectura.trim()}
+            >
+              No es correcto, corregir y comprobar
+            </Button>
+            <p className="text-sm text-(--text-secondary)">
+              La lectura puede fallar: revísala. El veredicto se calcula solo
+              con este texto, con las mismas reglas que si lo pegaras.
+            </p>
+          </div>
+        </Card>
+      )}
 
       <ol className="grid gap-5">
         {r.pasos.map((paso, i) => (

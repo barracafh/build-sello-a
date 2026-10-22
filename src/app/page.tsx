@@ -7,6 +7,7 @@ import { ComoFuncionaVarita } from "@/components/PasosVarita";
 import { Pestanas } from "@/components/Pestanas";
 import { PieVarita } from "@/components/PieVarita";
 import { PorQueVarita } from "@/components/PorQueVarita";
+import { VerificadorMensaje } from "@/components/VerificadorMensaje";
 import { VerificadorUrl } from "@/components/VerificadorUrl";
 
 export default function Home() {
@@ -66,6 +67,26 @@ export default function Home() {
                       cual. Te decimos si es oficial y cuál es la web buena.
                     </p>
                     <ChatEstafas />
+                  </>
+                ),
+              },
+              {
+                id: "captura",
+                etiqueta: "SMS o correo",
+                contenido: (
+                  <>
+                    <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
+                      Verificador de capturas
+                    </p>
+                    <h2 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
+                      ¿Este mensaje es de verdad?
+                    </h2>
+                    <p className="mt-6 text-lg text-(--text-secondary)">
+                      Pega el SMS o el correo, o sube una captura de pantalla
+                      como la que te llegó por WhatsApp. Te decimos si es
+                      oficial y cuál es la web buena.
+                    </p>
+                    <VerificadorMensaje />
                   </>
                 ),
               },
