@@ -2,6 +2,14 @@
 //   1. los enlaces (también neutralizados: hxxps://, [.] , [dot], [:])
 //   2. las señales de contenido publicadas por INCIBE (contexto.md, 5.4 y 5.6)
 // Solo lee texto: nunca abre nada de lo que encuentra.
+//
+// Las señales y los organismos son DATOS, no código: viven en
+// src/datos/senales.json y src/datos/organismos.json. Añadir una fuente de
+// señales nueva es registrar un objeto más en ese fichero; este motor se
+// limita a evaluarlo. Cómo añadir una: docs/anadir-datos.md.
+import organismosData from "../datos/organismos.json";
+import senalesData from "../datos/senales.json";
+import type { Source } from "@/components/Fuentes";
 
 export type Senal = { code: string; detalle: string };
 
@@ -49,98 +57,101 @@ const sinAcentos = (t: string) =>
   t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 // Organismos más suplantados, y cómo se nombran en los mensajes (4.2).
-const ORGANISMOS = [
-  { id: "aeat", nombre: "Agencia Tributaria (AEAT)", patron: /agencia tributaria|aeat|agenciatributaria|irpf|\brenta\b/ },
-  { id: "dgt", nombre: "Dirección General de Tráfico (DGT)", patron: /\bdgt\b|trafico|direccion electronica vial|\bdev\b/ },
-  { id: "correos", nombre: "Correos", patron: /correos/ },
-  { id: "seg-social", nombre: "Seguridad Social (INSS / TGSS)", patron: /seguridad social|seg-social|segsocial|tarjeta sanitaria|\binss\b|\btgss\b/ },
-  { id: "sepe", nombre: "Servicio Público de Empleo Estatal (SEPE)", patron: /\bsepe\b|prestacion por desempleo|\bparo\b/ },
-] as const;
+// Vienen de src/datos/organismos.json: 'id' es como las señales los citan,
+// 'nombre' debe coincidir con la entidad de la lista de dominios oficiales.
+type OrganismoConfig = { id: string; nombre: string; patron: string };
+
+const ORGANISMOS = (organismosData.organismos as OrganismoConfig[]).map((o) => ({
+  ...o,
+  regex: new RegExp(o.patron),
+}));
 
 /** Detecta a qué organismo dice pertenecer el mensaje. */
 export function detectarOrganismo(texto: string): { id: string; nombre: string } | undefined {
   const t = sinAcentos(texto);
-  return ORGANISMOS.find((o) => o.patron.test(t));
+  return ORGANISMOS.find((o) => o.regex.test(t));
 }
 
+// ---- Señales de contenido (src/datos/senales.json) ----
+// Cada señal es un objeto de configuración; el motor de aquí abajo es genérico
+// y no sabe nada de organismos ni campañas concretas.
+
+type Condicion = string;
+
+type SenalConfig = {
+  code: string;
+  concluyente: boolean;
+  detalle: string;
+  organismos?: string[];
+  sinOrganismo?: boolean;
+  tipos?: ("sms" | "email")[];
+  necesitaEnlace?: boolean;
+  sinEnlace?: boolean;
+  todo?: Condicion[];
+  alguno?: Condicion[];
+  sobre?: "sin_acentos" | "texto_original";
+  fuente?: Source;
+};
+
+const CONCEPTOS = senalesData.conceptos as Record<string, string>;
+const SENALES = senalesData.senales as unknown as SenalConfig[];
+
+// Una condición es "@concepto" (busca en senales.json, sección conceptos),
+// una expresión regular literal, o "@enlace" (el mensaje trae enlaces).
+const compilar = (cond: Condicion): RegExp | "@enlace" => {
+  if (cond === "@enlace") return cond;
+  const patron = cond.startsWith("@") ? CONCEPTOS[cond.slice(1)] : cond;
+  if (!patron) throw new Error(`Señal con condición desconocida: ${cond}`);
+  return new RegExp(patron);
+};
+
+const detalleDe = (plantilla: string, organismo?: { id: string; nombre: string }) =>
+  plantilla.replaceAll("{organismo}", organismo?.nombre ?? "el organismo");
+
 /**
- * Señales de contenido (contexto.md, 5.4). Las que devuelven
- * `concluyente: true` convierten el mensaje en no_oficial por sí solas;
- * las demás son avisos que suman sin concluir.
+ * Señales de contenido (contexto.md, 5.4). Las que tienen `concluyente: true`
+ * convierten el mensaje en no_oficial por sí solas; las demás son avisos que
+ * suman sin concluir. Devuelve también las fuentes de las señales que han
+ * disparado, para citarlas en la respuesta.
  */
 export function patronesContenido(
   texto: string,
   tipo: "sms" | "email",
   hayEnlace: boolean,
-): { concluyentes: Senal[]; avisos: Senal[] } {
-  const t = sinAcentos(texto);
+): { concluyentes: Senal[]; avisos: Senal[]; fuentes: Source[] } {
+  const sinAcentosTexto = sinAcentos(texto);
+  const organismo = detectarOrganismo(texto);
   const concluyentes: Senal[] = [];
   const avisos: Senal[] = [];
+  const fuentes: Source[] = [];
 
-  const organismo = detectarOrganismo(t);
-  const deLosCinco = organismo !== undefined;
+  for (const senal of SENALES) {
+    if (senal.tipos && !senal.tipos.includes(tipo)) continue;
+    if (senal.sinOrganismo && organismo) continue;
+    if (
+      senal.organismos &&
+      (!organismo || !senal.organismos.includes(organismo.id))
+    )
+      continue;
+    if (senal.necesitaEnlace && !hayEnlace) continue;
+    if (senal.sinEnlace && hayEnlace) continue;
 
-  const pidePago = /\bpago\b|\bpagar\b|\btasas\b|\babonar\b|\brecargo\b/.test(t);
-  const pideBancarios =
-    /(tarjeta).*(cvv|caducidad|pin|numero)|\bcvv\b|datos bancarios|numero de tarjeta|codigo (de verificacion|sms)|clave de acceso/.test(t);
-  const devolucion = /devolucion|reembolso/.test(t);
-  const multa = /multa|expediente|denuncia|sancion/.test(t);
-  const amenazaArresto = /arresto|detencion|orden de detencion/.test(t) && /(48|72) horas/.test(t);
+    const objetivo = senal.sobre === "texto_original" ? texto : sinAcentosTexto;
+    const cumple = (cond: Condicion) => {
+      const patron = compilar(cond);
+      return patron === "@enlace" ? hayEnlace : patron.test(objetivo);
+    };
+    const todoOk = (senal.todo ?? []).every(cumple);
+    const algunoOk = !senal.alguno || senal.alguno.some(cumple);
+    if (!todoOk || !algunoOk) continue;
 
-  if (deLosCinco && pidePago && hayEnlace) {
-    concluyentes.push({
-      code: "pago_por_enlace",
-      detalle: `Pide un pago a través de un enlace recibido, algo que ${organismo!.nombre} no hace por SMS ni por correo.`,
-    });
-  }
-  if (organismo?.id === "aeat" && devolucion && hayEnlace) {
-    concluyentes.push({
-      code: "devolucion_enlace",
-      detalle: "Promete una devolución de dinero y pide pulsar un enlace: patrón de fraude publicado por INCIBE.",
-    });
-  }
-  if (organismo?.id === "dgt" && multa && (hayEnlace || pidePago)) {
-    concluyentes.push({
-      code: "dgt_multa_enlace",
-      detalle: "La DGT notifica las multas por carta certificada o por la DEV, nunca con enlaces de pago en un SMS o correo.",
-    });
-  }
-  if (organismo?.id === "seg-social" && /(actualizar|actualizaci[o]n|suspen[d]|deuda)/.test(t) && hayEnlace) {
-    concluyentes.push({
-      code: "seg_social_actualizar",
-      detalle: "La Seguridad Social no pide actualizar datos ni pagar deudas mediante enlaces en un SMS o correo (INCIBE).",
-    });
-  }
-  if (organismo?.id === "dgt" && multa && tipo === "email") {
-    concluyentes.push({
-      code: "dgt_no_email",
-      detalle: "La DGT no notifica multas por correo electrónico: lo hace por carta certificada o por la DEV.",
-    });
-  }
-  if (deLosCinco && pideBancarios) {
-    concluyentes.push({
-      code: "pide_datos_bancarios",
-      detalle: `Pide datos de tarjeta o bancarios: ${organismo!.nombre} nunca los solicita por SMS ni por correo.`,
-    });
-  }
-  if (amenazaArresto) {
-    concluyentes.push({
-      code: "amenaza_arresto",
-      detalle: "Amenaza con un arresto en 48/72 h: patrón publicado por INCIBE en suplantaciones policiales.",
-    });
+    const disparada: Senal = {
+      code: senal.code,
+      detalle: detalleDe(senal.detalle, organismo),
+    };
+    (senal.concluyente ? concluyentes : avisos).push(disparada);
+    if (senal.fuente) fuentes.push(senal.fuente);
   }
 
-  if (/24 horas|48 horas|72 horas|recargo|ultimo recordatorio|ultima advertencia|inmediatamente/.test(t)) {
-    avisos.push({
-      code: "urgencia",
-      detalle: "Mete prisa con un plazo corto: es una señal típica de fraude, aunque por sí sola no concluye.",
-    });
-  }
-  if (/[0-9]{2,3},[0-9]{2}[¿?]|€\?|,00\?/.test(texto)) {
-    avisos.push({
-      code: "errores_codificacion",
-      detalle: "El texto tiene errores de codificación o tildes ausentes: un aviso institucional real los pasa por control.",
-    });
-  }
-  return { concluyentes, avisos };
+  return { concluyentes, avisos, fuentes };
 }

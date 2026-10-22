@@ -19,6 +19,12 @@ Abre `http://localhost:3000/<equipo>`, con el `equipo` de `ficha.json`. Cambia e
 - Conserva el aviso de no oficial y `<BotonAviso />`, que abre un issue en vuestro repo.
 - La IA se llama desde el servidor con `src/lib/ia.ts`; hay un ejemplo en `src/app/api/ia/route.ts`. Las claves van en `.env.local` y nunca en el código ni en variables `NEXT_PUBLIC_*`.
 
+## Ampliar el verificador sin tocar código
+
+El verificador separa los datos de la lógica: las marcas, acortadores, plataformas, organismos, señales de contenido, fuentes y casos de prueba viven en `src/datos/` (con el índice en [`src/datos/LEEME.md`](src/datos/LEEME.md)). Para añadir un dominio oficial nuevo, un caso de prueba, una señal de contenido o una fuente, sigue las recetas con ejemplo real de [`docs/anadir-datos.md`](docs/anadir-datos.md) y comprueba con `bun scripts/probar-mensajes.ts` y `bun test`.
+
+La API es `POST /api/verificar` con `{"entrada": "…", "tipo": "url" | "web" | "sms" | "email"}`; los endpoints anteriores (`/api/verificar-url` y `/api/verificar-mensaje`) siguen funcionando como alias.
+
 ## Publicar
 
 Cada push a `main` se publica solo en `https://build.barraca.house/<equipo>`. No hace falta entrar en Vercel: las claves ya están puestas en el proyecto. Si `bun run build` falla en local, tampoco se publicará.

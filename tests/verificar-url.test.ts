@@ -169,7 +169,9 @@ describe("trampas de dominio del reto", () => {
   });
 
   test("la marca DGT en un dominio ajeno es imitación", () => {
-    const r = v("hxxps://dgt-multas-pago[.]com/expediente");
+    // §5.2.10: la marca sola no concluye; aquí concluye al acompañarla el
+    // TLD barato .top de las campañas publicadas.
+    const r = v("hxxps://dgt-multas-pago[.]top/expediente");
     expect(resumen(r)).toEqual({ veredicto: "no_oficial", motivo: "imitacion_de_marca" });
     expect(r.entidad).toBe("Dirección General de Tráfico (DGT)");
   });
@@ -184,7 +186,8 @@ describe("trampas de dominio del reto", () => {
 
   test("un TLD .top añade el aviso de INCIBE", () => {
     const r = v("hxxps://tienda-barata[.]top/oferta");
-    expect(r.avisos.join(" ")).toContain(".top");
+    // El aviso cita el sufijo neutralizado, como toda la URL analizada.
+    expect(r.avisos.join(" ")).toContain("tienda-barata[.]top");
   });
 
   test("un homógrafo punycode de un dominio de la lista es fraude", () => {
@@ -206,7 +209,7 @@ describe("dominio desconocido: no es lo mismo que fraude", () => {
   test("un dominio desconocido con TLD barato avisa, pero no acusa", () => {
     const r = v("https://pagina-desconocida[.]click");
     expect(resumen(r)).toEqual({ veredicto: "no_determinable", motivo: "desconocido" });
-    expect(r.avisos.join(" ")).toContain(".click");
+    expect(r.avisos.join(" ")).toContain("pagina-desconocida[.]click");
   });
 });
 

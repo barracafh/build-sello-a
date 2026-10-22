@@ -1,7 +1,9 @@
-// Prueba los 10 casos de datos/mensajes-ejemplo.json. Los sms/email pasan por
-// el verificador de mensajes; el caso «web», por el de URLs. Ejecutar con:
-//   bun scripts/probar-mensajes.ts
-import casos from "../datos/mensajes-ejemplo.json";
+// Prueba los 10 casos de datos/mensajes-ejemplo.json más los del equipo en
+// src/datos/casos-extra.json. Los sms/email pasan por el verificador de
+// mensajes; los «web», por el de URLs. Ejecutar con: bun scripts/probar-mensajes.ts
+// Cómo añadir casos: docs/anadir-datos.md.
+import casosBase from "../datos/mensajes-ejemplo.json";
+import casosExtra from "../src/datos/casos-extra.json";
 import { verificarMensaje } from "../src/lib/verificar-mensaje";
 import { verificarUrl } from "../src/lib/verificar-url";
 
@@ -16,8 +18,10 @@ type Caso = {
   esperado: string;
 };
 
+const casos = [...(casosBase as Caso[]), ...(casosExtra.casos as Caso[])];
+
 let aciertos = 0;
-for (const c of casos as Caso[]) {
+for (const c of casos) {
   let veredicto: string;
   if (c.tipo === "web") {
     const r = verificarUrl(c.url ?? c.texto);

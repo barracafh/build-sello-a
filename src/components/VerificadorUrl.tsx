@@ -82,10 +82,12 @@ export function VerificadorUrl() {
     setCargando(true);
     setError(undefined);
     try {
-      const res = await fetch(ruta("/api/verificar-url"), {
+      const res = await fetch(ruta("/api/verificar"), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(ocultos.length ? { enlaces: ocultos } : { texto: valor }),
+        body: JSON.stringify(
+          ocultos.length ? { enlaces: ocultos } : { entrada: valor, tipo: "url" },
+        ),
       });
       const data = await res.json();
       if (!res.ok) {

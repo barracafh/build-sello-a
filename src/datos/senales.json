@@ -1,0 +1,212 @@
+{
+  "comentario": "Señales de contenido para mensajes (SMS o correo), de los avisos de INCIBE (contexto.md, 5.4 y 5.6). CÓMO FUNCIONA: cada señal se evalúa sobre el texto del mensaje; si encaja, es una 'concluyente' (convierte el mensaje en no_oficial por sí sola) o un 'aviso' (suma duda sin concluir). Campos: code (motivo en la respuesta), concluyente (true/false), detalle (lo que se le cuenta al ciudadano; {organismo} se sustituye por el nombre detectado), organismos (lista de 'id' de organismos.json; si falta, vale cualquier organismo detectado), sinOrganismo (true: solo si el mensaje NO nombra a un organismo de organismos.json), tipos ('sms' o 'email'; si falta, ambos), necesitaEnlace (true: solo con enlaces en el texto), sinEnlace (true: solo sin enlaces), todo (TODAS las condiciones deben encajar), alguno (al menos UNA debe encajar), sobre ('sin_acentos' por defecto, o 'texto_original' para patrones con tildes o símbolos), fuente ({nombre, url} opcional: cita que se añade a la respuesta cuando la señal dispara). Una condición es '@concepto' (busca en 'conceptos' aquí abajo, así se reutilizan patrones) o directamente una expresión regular. Condición especial: '@enlace' se cumple si el mensaje trae enlaces. AÑADIR UNA SEÑAL = copiar un bloque, ajustar el patrón y el detalle. Las expresiones regulares van en formato JSON: duplica cada barra invertida (\\\\b).",
+  "conceptos": {
+    "pago": "\\b(pago|pagar|tasas|abonar|recargo)\\b",
+    "bancarios": "(tarjeta).*(cvv|caducidad|pin|numero)|\\bcvv\\b|datos bancarios|numero de tarjeta|codigo (de verificacion|sms)|clave de acceso",
+    "devolucion": "devolucion|reembolso",
+    "multa": "multa|expediente|denuncia|sancion",
+    "amenaza": "arresto|detencion|orden de detencion",
+    "plazo_horas": "(48|72) horas",
+    "urgencia": "\\b(24|48|72) ?h(oras)?\\b|\\d{1,2} horas restantes|hoy mismo|antes de (las|que)|ultimo (aviso|recordatorio|plazo)|ultima (advertencia|oportunidad)|inmediatamente|de inmediato|urgente|expira|caduca|si no (actua|paga|responde)",
+    "actualizar_deuda": "actualizar|actualizacion|suspen[d]|deuda"
+  },
+  "senales": [
+    {
+      "code": "pago_por_enlace",
+      "concluyente": true,
+      "necesitaEnlace": true,
+      "organismos": [
+        "aeat",
+        "dgt",
+        "correos",
+        "seg-social",
+        "sepe"
+      ],
+      "todo": [
+        "@pago"
+      ],
+      "detalle": "Pide un pago a través de un enlace recibido, algo que {organismo} no hace por SMS ni por correo."
+    },
+    {
+      "code": "devolucion_enlace",
+      "concluyente": true,
+      "necesitaEnlace": true,
+      "organismos": [
+        "aeat"
+      ],
+      "todo": [
+        "@devolucion"
+      ],
+      "detalle": "Promete una devolución de dinero y pide pulsar un enlace: patrón de fraude publicado por INCIBE.",
+      "fuente": {
+        "nombre": "INCIBE · Suplantación de la Agencia Tributaria",
+        "url": "https://www.incibe.es/ciudadania/avisos/suplantacion-de-la-agencia-tributaria-sms-durante-el-periodo-de-presentacion-de"
+      }
+    },
+    {
+      "code": "dgt_multa_enlace",
+      "concluyente": true,
+      "organismos": [
+        "dgt"
+      ],
+      "todo": [
+        "@multa"
+      ],
+      "alguno": [
+        "@enlace",
+        "@pago"
+      ],
+      "detalle": "La DGT notifica las multas por carta certificada o por la DEV, nunca con enlaces de pago en un SMS o correo."
+    },
+    {
+      "code": "seg_social_actualizar",
+      "concluyente": true,
+      "necesitaEnlace": true,
+      "organismos": [
+        "seg-social"
+      ],
+      "todo": [
+        "@actualizar_deuda"
+      ],
+      "detalle": "La Seguridad Social no pide actualizar datos ni pagar deudas mediante enlaces en un SMS o correo (INCIBE)."
+    },
+    {
+      "code": "dgt_no_email",
+      "concluyente": true,
+      "tipos": [
+        "email"
+      ],
+      "organismos": [
+        "dgt"
+      ],
+      "todo": [
+        "@multa"
+      ],
+      "detalle": "La DGT no notifica multas por correo electrónico: lo hace por carta certificada o por la DEV."
+    },
+    {
+      "code": "pide_datos_bancarios",
+      "concluyente": true,
+      "organismos": [
+        "aeat",
+        "dgt",
+        "correos",
+        "seg-social",
+        "sepe"
+      ],
+      "todo": [
+        "@bancarios"
+      ],
+      "detalle": "Pide datos de tarjeta o bancarios: {organismo} nunca los solicita por SMS ni por correo."
+    },
+    {
+      "code": "amenaza_arresto",
+      "concluyente": true,
+      "todo": [
+        "@amenaza",
+        "@plazo_horas"
+      ],
+      "detalle": "Amenaza con un arresto en 48/72 h: patrón publicado por INCIBE en suplantaciones policiales.",
+      "fuente": {
+        "nombre": "INCIBE · Avisos a la ciudadanía",
+        "url": "https://www.incibe.es/ciudadania/avisos"
+      }
+    },
+    {
+      "code": "transferencia_o_bizum",
+      "concluyente": true,
+      "todo": [
+        "transferencia|bizum|\\biban\\b|numero de cuenta|\\bes\\d{2}\\s?\\d{4}"
+      ],
+      "detalle": "Pide una transferencia, un Bizum o un número de cuenta. Las administraciones no cobran así por SMS ni por correo."
+    },
+    {
+      "code": "pide_datos_personales",
+      "concluyente": true,
+      "necesitaEnlace": true,
+      "todo": [
+        "(introduz|facilit|confirm|actualic|verifi|valid)[a-z]*\\b[^.]{0,60}\\b(dni|nif|nie|contrasena|clave|usuario|identidad|datos personales)"
+      ],
+      "detalle": "Pide confirmar o actualizar datos personales (DNI, contraseña, Cl@ve) en un enlace. Es el gancho clásico del phishing."
+    },
+    {
+      "code": "pide_instalar",
+      "concluyente": true,
+      "todo": [
+        "instal[a-z]+ (la |una |esta )?(app|aplicacion)|descarg[a-z]+ (el |la |un )?(archivo|adjunto|aplicacion|apk)"
+      ],
+      "detalle": "Pide instalar una aplicación o descargar un archivo. Las apps oficiales solo se instalan desde las tiendas oficiales, nunca desde un enlace de SMS."
+    },
+    {
+      "code": "urgencia",
+      "concluyente": false,
+      "todo": [
+        "@urgencia"
+      ],
+      "detalle": "Mete prisa con un plazo corto: es una señal típica de fraude, aunque por sí sola no concluye."
+    },
+    {
+      "code": "amenaza",
+      "concluyente": false,
+      "todo": [
+        "embargo|bloqueo|bloqueada|bloqueara|suspension|suspendida|se le retirara|perdera (el|su|la)|cancelacion"
+      ],
+      "detalle": "Amenaza con una consecuencia (embargo, bloqueo, suspensión) para que actúes sin pensar."
+    },
+    {
+      "code": "dinero_pendiente",
+      "concluyente": false,
+      "sinEnlace": true,
+      "todo": [
+        "@devolucion"
+      ],
+      "detalle": "Promete un dinero pendiente de cobrar. Las devoluciones reales se ingresan en tu cuenta sin que hagas nada."
+    },
+    {
+      "code": "paquete_retenido",
+      "concluyente": false,
+      "todo": [
+        "paquete (retenido|pendiente)|gastos de aduana|tasa de (envio|entrega|aduana)|no se ha podido entregar"
+      ],
+      "detalle": "Habla de un paquete retenido o de una tasa de entrega. Es el patrón de las campañas falsas de Correos que publica INCIBE."
+    },
+    {
+      "code": "premio",
+      "concluyente": false,
+      "todo": [
+        "ha ganado|has ganado|premio|sorteo|regalo"
+      ],
+      "detalle": "Habla de un premio o regalo. Las administraciones no reparten premios por SMS."
+    },
+    {
+      "code": "pago_enlace_otro",
+      "concluyente": false,
+      "necesitaEnlace": true,
+      "sinOrganismo": true,
+      "todo": [
+        "@pago"
+      ],
+      "detalle": "Pide un pago a través de un enlace. Los organismos cobran por su sede electrónica, no por enlaces de mensaje."
+    },
+    {
+      "code": "remitente_movil",
+      "concluyente": false,
+      "tipos": [
+        "sms"
+      ],
+      "todo": [
+        "\\b(de|desde|remitente)[: ]+(\\+34\\s?)?[67]\\d{2}\\s?\\d{3}\\s?\\d{3}\\b"
+      ],
+      "detalle": "Viene de un número de móvil normal. Los avisos oficiales llegan con remitente alfanumérico (AEAT, DGT…), no desde un 6xx o 7xx."
+    },
+    {
+      "code": "errores_codificacion",
+      "concluyente": false,
+      "sobre": "texto_original",
+      "todo": [
+        "[0-9]{2,3},[0-9]{2}[¿?]|€\\?|,00\\?"
+      ],
+      "detalle": "El texto tiene errores de codificación o tildes ausentes: un aviso institucional real los pasa por control."
+    }
+  ]
+}

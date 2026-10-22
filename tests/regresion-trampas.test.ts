@@ -35,7 +35,8 @@ describe("trampa: hxxps://…[.]top, el patrón de la campaña AEAT", () => {
   test("la URL neutralizada se desofusca en memoria y se acusa", () => {
     const r = v("hxxps://agenciatributaria-devolucion[.]top/renta2023");
     expect(r.veredicto).toBe("no_oficial");
-    expect(r.avisos.join(" ")).toContain(".top");
+    // El aviso del TLD muestra el sufijo neutralizado, como toda la URL.
+    expect(r.avisos.join(" ")).toContain("[.]top");
   });
 
   test("una URL .top con dominio desconocido avisa, pero no acusa", () => {

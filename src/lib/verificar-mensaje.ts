@@ -5,6 +5,7 @@
 // no_determinable (SETUP.md). Nunca se abre nada de lo analizado.
 
 import lista from "../../datos/dominios-oficiales.json";
+import fuentesData from "../datos/fuentes.json";
 import { noDeterminable, verificarUrl, type Veredicto } from "./verificar-url";
 import {
   detectarOrganismo,
@@ -15,14 +16,9 @@ import {
 } from "./resolver";
 import type { Source } from "@/components/Fuentes";
 
-const INCIBE_AVISOS: Source = {
-  nombre: "INCIBE · Avisos a la ciudadanía",
-  url: "https://www.incibe.es/ciudadania/avisos",
-};
-const INCIBE_017: Source = {
-  nombre: "INCIBE · Línea de Ayuda en Ciberseguridad 017",
-  url: "https://www.incibe.es/linea-de-ayuda-en-ciberseguridad",
-};
+const FUENTES_GENERICAS: Source[] = fuentesData.orden
+  .map((clave) => fuentesData.fuentes[clave as keyof typeof fuentesData.fuentes])
+  .filter(Boolean);
 
 export type EnlaceAnalizado = {
   neutralizado: string;
@@ -51,7 +47,7 @@ export function verificarMensaje(
   tipo: "sms" | "email" = "sms",
 ): MensajeResultado {
   const enlaces = resolverEnlaces(texto);
-  const { concluyentes, avisos: senalesAviso } = patronesContenido(
+  const { concluyentes, avisos: senalesAviso, fuentes: fuentesSenales } = patronesContenido(
     texto,
     tipo,
     enlaces.length > 0,
@@ -72,7 +68,11 @@ export function verificarMensaje(
     "He leído tu mensaje solo como texto: no he abierto sus enlaces ni he seguido redirecciones.",
   ];
   const avisos: string[] = [];
-  const fuentes: Source[] = [INCIBE_AVISOS, INCIBE_017];
+  // Fuentes genéricas más las de las señales que han disparado (sin repetir).
+  const fuentes: Source[] = [...FUENTES_GENERICAS];
+  for (const fuente of fuentesSenales) {
+    if (!fuentes.some((f) => f.url === fuente.url)) fuentes.push(fuente);
+  }
 
   const fraudeUrl = analizados.find(
     ({ resultado }) => !("error" in resultado) && resultado.veredicto === "no_oficial",
