@@ -1,5 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { BotonAviso } from "@/components/BotonAviso";
+import { ChatEstafas } from "@/components/ChatEstafas";
+import { Pestanas } from "@/components/Pestanas";
 import { VerificadorUrl } from "@/components/VerificadorUrl";
 import ficha from "../../ficha.json";
 
@@ -24,21 +26,51 @@ export default function Home() {
       <main
         id="contenido"
         tabIndex={-1}
-        className="mx-auto max-w-[760px] px-(--page-gutter) pt-12 pb-20 outline-none md:pt-20"
+        className="mx-auto max-w-[760px] px-(--page-gutter) pt-10 pb-20 outline-none md:pt-14"
       >
-        <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
-          Verificador de webs
-        </p>
-        <h1 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
-          ¿Esta web es oficial?
-        </h1>
-        <p className="mt-6 text-lg text-(--text-secondary)">
-          Pega la dirección de un SMS, un correo o un aviso que dice venir de la
-          DGT, Hacienda u otro organismo. Te decimos si es suya y cuál es la
-          buena.
-        </p>
-
-        <VerificadorUrl />
+        <Pestanas
+          pestanas={[
+            {
+              id: "web",
+              etiqueta: "Verificar web",
+              contenido: (
+                <>
+                  <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
+                    Verificador de webs
+                  </p>
+                  <h1 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
+                    ¿Esta web es oficial?
+                  </h1>
+                  <p className="mt-6 text-lg text-(--text-secondary)">
+                    Pega la dirección de un SMS, un correo o un aviso que dice
+                    venir de la DGT, Hacienda u otro organismo. Te decimos si es
+                    suya y cuál es la buena.
+                  </p>
+                  <VerificadorUrl />
+                </>
+              ),
+            },
+            {
+              id: "chat",
+              etiqueta: "Chat",
+              contenido: (
+                <>
+                  <p className="font-mono text-xs tracking-[0.06em] text-(--text-secondary) uppercase">
+                    Mensajes y enlaces
+                  </p>
+                  <h2 className="mt-4 text-[clamp(36px,4.5vw,60px)] leading-[1.1] tracking-[-0.02em]">
+                    ¿Este mensaje es de verdad?
+                  </h2>
+                  <p className="mt-6 text-lg text-(--text-secondary)">
+                    Pega un SMS, un correo o una URL que dice venir de un
+                    organismo público y pregúntanos.
+                  </p>
+                  <ChatEstafas />
+                </>
+              ),
+            },
+          ]}
+        />
       </main>
 
       <footer className="p-2">
