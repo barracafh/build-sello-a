@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, type ClipboardEvent, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -70,6 +77,18 @@ export function VerificadorUrl() {
   const [resultado, setResultado] = useState<Resultado | ResultadoEnlaces>();
   const [error, setError] = useState<string>();
   const [cargando, setCargando] = useState(false);
+  const zonaResultado = useRef<HTMLDivElement>(null);
+
+  // Al llegar el resultado (o un error) la página baja sola hasta él: el
+  // ciudadano no tiene que buscarlo. Sin animación si pide menos movimiento.
+  useEffect(() => {
+    if (!resultado && !error) return;
+    const reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    zonaResultado.current?.scrollIntoView({
+      behavior: reducido ? "auto" : "smooth",
+      block: "start",
+    });
+  }, [resultado, error]);
 
   function alPegar(e: ClipboardEvent<HTMLTextAreaElement>) {
     const html = e.clipboardData.getData("text/html");
@@ -183,7 +202,7 @@ export function VerificadorUrl() {
         </div>
       </form>
 
-      <div aria-live="polite" className="mt-12">
+      <div ref={zonaResultado} aria-live="polite" className="mt-12 scroll-mt-6">
         {error && <p className="text-lg">{error}</p>}
         {resultado &&
           ("enlaces" in resultado ? (
@@ -276,9 +295,30 @@ function WebOficial({ url, entidad }: { url?: string; entidad?: string }) {
   );
 }
 
+// Franja de color del recuadro según el veredicto, con los tokens de la marca.
+const FRANJA: Record<Veredicto, string> = {
+  no_oficial: "bg-destructive",
+  oficial_verificado: "bg-(--brand)",
+  no_determinable: "bg-(--brand-orange)",
+};
+
+// El resultado, encuadrado: tarjeta blanca con el borde lila de la marca y
+// una franja arriba del color del veredicto.
+function Recuadro({ veredicto, children }: { veredicto: Veredicto; children: ReactNode }) {
+  return (
+    <section
+      aria-labelledby="veredicto"
+      className="overflow-hidden rounded-3xl bg-background ring-1 ring-(--brand-yellow)"
+    >
+      <div aria-hidden="true" className={cn("h-2", FRANJA[veredicto])} />
+      <div className="p-5 text-lg md:p-10 [&>*+*]:mt-8">{children}</div>
+    </section>
+  );
+}
+
 function Respuesta({ r }: { r: Resultado }) {
   return (
-    <section aria-labelledby="veredicto" className="text-lg [&>*+*]:mt-8">
+    <Recuadro veredicto={r.veredicto}>
       <div>
         <Cabecera veredicto={r.veredicto} titular={r.titular} />
         <p className="mt-3 text-[15px] text-(--text-secondary)">
@@ -292,7 +332,7 @@ function Respuesta({ r }: { r: Resultado }) {
       <QueHacer veredicto={r.veredicto} consejo={r.consejo} avisos={r.avisos} />
       <WebOficial url={r.webOficial} entidad={r.entidad} />
       <Fuentes fuentes={r.fuentes} />
-    </section>
+    </Recuadro>
   );
 }
 
@@ -308,7 +348,7 @@ function RespuestaEnlaces({ r }: { r: ResultadoEnlaces }) {
   const consejo = resultados.find((x) => x.consejo)?.consejo;
   const avisos = [...new Set(resultados.flatMap((x) => x.avisos))];
   return (
-    <section aria-labelledby="veredicto" className="text-lg [&>*+*]:mt-8">
+    <Recuadro veredicto={r.veredicto}>
       <div>
         <Cabecera veredicto={r.veredicto} titular={r.titular} />
         <p className="mt-3 text-[15px] text-(--text-secondary)">
@@ -358,6 +398,6 @@ function RespuestaEnlaces({ r }: { r: ResultadoEnlaces }) {
       <QueHacer veredicto={r.veredicto} consejo={consejo} avisos={avisos} />
       <WebOficial url={guia?.webOficial} entidad={guia?.entidad} />
       <Fuentes fuentes={fuentes} />
-    </section>
+    </Recuadro>
   );
 }
