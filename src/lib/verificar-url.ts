@@ -395,7 +395,8 @@ export function verificarUrl(texto: string): Resultado | { error: string } {
     };
   }
 
-  // Paso 11: lista comunitaria de phishing activo, actualizada cada día. Va
+  // Lista comunitaria de phishing activo (fuente 4 de src/datos/FUENTES.md;
+  // no es un paso de contexto.md 5.2, es una adición del equipo). Va
   // después de la lista oficial: solo puede decir «no oficial», nunca «oficial».
   if (fraudes.dominios.some((d) => termina(host, d))) {
     const suplantada = Object.entries(MARCAS).find(([m]) => m.length >= 5 && host.includes(m));
