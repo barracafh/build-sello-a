@@ -141,7 +141,7 @@ describe("cabeceras de seguridad y CORS cerrado", () => {
 });
 
 describe("límite de peticiones: 429 con Retry-After", () => {
-  test("la petición 31 en un minuto bloquea, con Retry-After", async () => {
+  test("la petición que supera el límite en un minuto bloquea, con Retry-After", async () => {
     const cuerpo = { entrada: "https://bit.ly/abc123", tipo: "url" };
     for (let i = 0; i < LIMITE_PETICIONES; i++) {
       const res = await postVerificar(peticion(cuerpo, "198.51.100.7"));

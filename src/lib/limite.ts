@@ -9,7 +9,7 @@
 //     activas. Es una protección antiautomatización básica, no un tope
 //     estricto; se documenta así en el PR y en docs/anadir-datos.md.
 
-export const LIMITE_PETICIONES = 30; // peticiones
+export const LIMITE_PETICIONES = 60; // peticiones
 export const VENTANA_MS = 60_000; // por minuto (ventana deslizante)
 
 // Si el mapa crece mucho (flood con IPs falsas), se barren las ventanas

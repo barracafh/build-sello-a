@@ -246,7 +246,7 @@ dependencia nueva y movimiento en `bun.lock` para el mismo trabajo.
 - **CORS cerrado**: la API solo se consume desde la propia herramienta (mismo
   origen), así que no se emite ningún `Access-Control-Allow-Origin`. Cada
   ruta responde a `OPTIONS` con `204` y su lista `Allow`.
-- **Límite por IP**: 30 peticiones por minuto con ventana deslizante. Al
+- **Límite por IP**: 60 peticiones por minuto con ventana deslizante. Al
   superarlas, `429` con código `demasiadas_peticiones` y cabecera
   `Retry-After` (segundos). Implementación en `src/lib/limite.ts`: SOLO
   contadores en memoria, nunca se escribe la IP en disco, base de datos ni

@@ -75,14 +75,14 @@ export function ipCliente(req: Request): string {
 function respuestaSiExcedeLimite(req: Request): Response | null {
   const estado = comprobarLimite(ipCliente(req));
   if (estado.permitido) return null;
-  // Por instancia (ver src/lib/limite.ts): 30 peticiones por minuto e IP,
+  // Por instancia (ver src/lib/limite.ts): 60 peticiones por minuto e IP,
   // ventana deslizante, solo contadores en memoria.
   return respuestaError(
     "demasiadas_peticiones",
     "Has hecho muchas comprobaciones seguidas. Espera un momento y vuelve a intentarlo.",
     429,
     {
-      detalle: `Límite por IP: 30 peticiones por minuto (por instancia). Reintenta en ${Math.ceil(estado.reintentaEnMs / 1000)} s.`,
+      detalle: `Límite por IP: 60 peticiones por minuto (por instancia). Reintenta en ${Math.ceil(estado.reintentaEnMs / 1000)} s.`,
       cabeceras: { "Retry-After": String(Math.ceil(estado.reintentaEnMs / 1000)) },
     },
   );
