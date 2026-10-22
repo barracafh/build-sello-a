@@ -58,7 +58,7 @@ describe("combinación de veredictos de enlaces", () => {
 
   test("los enlaces se devuelven analizados y neutralizados, nunca clicables", () => {
     const r = verificarMensaje(
-      "Multa: https://bit.ly/abc y hxxps://correos-paquetes[.]com/pago de tasas",
+      "Multa: https://bit.ly/abc y hxxps://correos-paquetes[.]top/pago de tasas",
       "sms",
     );
     expect(r.enlaces).toHaveLength(2);
@@ -69,7 +69,7 @@ describe("combinación de veredictos de enlaces", () => {
       "no_determinable",
       "no_oficial",
     ]);
-    // Y el mensaje entero es fraude por el segundo enlace.
+    // Y el mensaje entero es fraude por el segundo enlace (marca + TLD barato).
     expect(r.veredicto).toBe("no_oficial");
   });
 });
