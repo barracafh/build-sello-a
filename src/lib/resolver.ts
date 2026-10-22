@@ -83,8 +83,10 @@ type SenalConfig = {
   concluyente: boolean;
   detalle: string;
   organismos?: string[];
+  sinOrganismo?: boolean;
   tipos?: ("sms" | "email")[];
   necesitaEnlace?: boolean;
+  sinEnlace?: boolean;
   todo?: Condicion[];
   alguno?: Condicion[];
   sobre?: "sin_acentos" | "texto_original";
@@ -125,12 +127,14 @@ export function patronesContenido(
 
   for (const senal of SENALES) {
     if (senal.tipos && !senal.tipos.includes(tipo)) continue;
+    if (senal.sinOrganismo && organismo) continue;
     if (
       senal.organismos &&
       (!organismo || !senal.organismos.includes(organismo.id))
     )
       continue;
     if (senal.necesitaEnlace && !hayEnlace) continue;
+    if (senal.sinEnlace && hayEnlace) continue;
 
     const objetivo = senal.sobre === "texto_original" ? texto : sinAcentosTexto;
     const cumple = (cond: Condicion) => {

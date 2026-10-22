@@ -107,8 +107,10 @@ nunca URL reales de fraude ni datos personales. El caso entra también en
 | `concluyente`    | sí          | `true` convierte el mensaje en `no_oficial` por sí sola; `false` solo añade un aviso.                       |
 | `detalle`        | sí          | Lo que se le cuenta al ciudadano. `{organismo}` se sustituye por el nombre detectado.                       |
 | `organismos`     | no          | Lista de `id` de `organismos.json`. Si falta, vale cualquier organismo detectado.                           |
+| `sinOrganismo`   | no          | `true`: solo dispara si el mensaje NO nombra a un organismo de `organismos.json`.                          |
 | `tipos`          | no          | `["sms"]`, `["email"]` o ambos si falta.                                                                   |
 | `necesitaEnlace` | no          | `true`: solo dispara si el mensaje trae enlaces.                                                            |
+| `sinEnlace`      | no          | `true`: solo dispara si el mensaje NO trae enlaces.                                                         |
 | `todo`           | no          | TODAS estas condiciones deben encajar.                                                                      |
 | `alguno`         | no          | Al menos UNA debe encajar (útil con `@enlace` alternado con `@pago`).                                       |
 | `sobre`          | no          | `sin_acentos` (por defecto) o `texto_original`, si el patrón necesita tildes o símbolos como `¿` o `€`.     |
