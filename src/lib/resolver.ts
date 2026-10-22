@@ -141,6 +141,9 @@ type SenalConfig = {
 const CONCEPTOS = senalesData.conceptos as Record<string, string>;
 const SENALES = senalesData.senales as unknown as SenalConfig[];
 
+// Cuántas señales hay cargadas: lo usa /api/health.
+export const NUM_SENALES = SENALES.length;
+
 // Una condición es "@concepto" (busca en senales.json, sección conceptos),
 // una expresión regular literal, o "@enlace" (el mensaje trae enlaces).
 const compilar = (cond: Condicion): RegExp | "@enlace" => {

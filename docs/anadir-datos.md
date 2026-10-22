@@ -191,25 +191,119 @@ Hay tres sitios donde vive una fuente:
 
 ## 6. La API
 
-Un solo endpoint genérico, más los dos alias de siempre:
+Un solo endpoint genérico, los dos alias de siempre y la health:
 
 | Endpoint                | Cuerpo                                            | Uso                                                |
 | ----------------------- | ------------------------------------------------- | -------------------------------------------------- |
 | `POST /api/verificar`   | `{"entrada": "…", "tipo": "url" \| "web" \| "sms" \| "email"}` | El recomendado. `web` es alias de `url`. |
 | `POST /api/verificar-url`  | `{"texto": "…"}`                               | Alias de compatibilidad de `url`.                  |
-| `POST /api/verificar-mensaje` | `{"texto": "…", "tipo": "sms" \| "email"}`  | Alias de compatibilidad de `sms`/`email`.          |
+| `POST /api/verificar-mensaje` | `{"texto": "…", "tipo": "sms" \| "email"}`  | Alias de compatibilidad de `sms`/`email` (`tipo` falta → `sms`). |
+| `GET /api/health`       | —                                                 | Estado del despliegue (para el paso de operaciones). |
 
-Los tres devuelven la misma forma de respuesta (`veredicto`, `motivo`,
-`titular`, `pasos`, `avisos`, `fuentes`, …) porque los tres pasan por
-`src/lib/verificar.ts`, que enruta al verificador adecuado. Los límites de
-tamaño se aplican por tipo (2.000 caracteres para URL, 4.000 para mensajes).
-Enrutar un tipo nuevo de entrada ahí es añadir una rama en `verificar()`.
+Los tres de verificación devuelven la misma forma de respuesta (`veredicto`,
+`motivo`, `titular`, `pasos`, `avisos`, `fuentes`, …) porque los tres pasan
+por `src/lib/verificar.ts`, que enruta al verificador adecuado. Los límites
+de tamaño se aplican por tipo (2.000 caracteres para URL, 4.000 para
+mensajes). Enrutar un tipo nuevo de entrada ahí es añadir una rama en
+`verificar()`.
+
+### Contrato de errores
+
+Cualquier respuesta que no sea un veredicto lleva SIEMPRE esta forma:
+
+```json
+{ "error": "mensaje humano en español (es lo que muestra el front)",
+  "codigo": "codigo_estable_agnostico_de_idioma",
+  "detalle": "opcional, más contexto técnico" }
+```
+
+Códigos de motivo estables (los añade `src/lib/api.ts`, que es donde viven
+la validación, las cabeceras y los handlers de las tres rutas):
+
+| Código                     | HTTP | Qué pasa                                                            |
+| -------------------------- | ---- | ------------------------------------------------------------------- |
+| `json_invalido`            | 400  | El cuerpo no es JSON o no es un objeto.                             |
+| `entrada_requerida`        | 422  | Falta el campo de texto (`entrada` o `texto`).                      |
+| `entrada_vacia`            | 422  | El campo de texto está en blanco.                                   |
+| `entrada_demasiado_larga`  | 422  | Más de 2.000 caracteres (URL) o 4.000 (mensajes).                   |
+| `tipo_no_valido`           | 422  | `tipo` no es uno de `url`, `web`, `sms`, `email` (o `sms`/`email` en el alias de mensajes). |
+| `entrada_no_reconocida`    | 422  | En la entrada no hay nada que el verificador sepa leer.             |
+| `enlaces_vacios`           | 422  | `enlaces` llegó vacío.                                              |
+| `enlaces_no_validos`       | 422  | Los enlaces no llevan `{texto, href}` o `href` supera 2.000 caracteres. |
+| `demasiados_enlaces`       | 422  | Más de 50 enlaces por petición.                                     |
+| `enlaces_no_reconocidos`   | 422  | En los enlaces no hay nada que el verificador sepa leer.            |
+| `demasiadas_peticiones`    | 429  | Límite por IP superado (ver más abajo).                             |
+
+Se validó con un validador propio (`src/lib/api.ts`) en vez de zod: los
+cuerpos son un objeto plano con dos o tres campos y zod añadiría una
+dependencia nueva y movimiento en `bun.lock` para el mismo trabajo.
+
+### Cabeceras, CORS y límite de peticiones
+
+- **Cabeceras de seguridad** en todas las respuestas de la API (también en
+  los errores): `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: no-referrer` y `Cache-Control: no-store`.
+- **CORS cerrado**: la API solo se consume desde la propia herramienta (mismo
+  origen), así que no se emite ningún `Access-Control-Allow-Origin`. Cada
+  ruta responde a `OPTIONS` con `204` y su lista `Allow`.
+- **Límite por IP**: 60 peticiones por minuto con ventana deslizante. Al
+  superarlas, `429` con código `demasiadas_peticiones` y cabecera
+  `Retry-After` (segundos). Implementación en `src/lib/limite.ts`: SOLO
+  contadores en memoria, nunca se escribe la IP en disco, base de datos ni
+  logs (regla de plataforma: no se guarda nada del ciudadano). En serverless
+  cada instancia lleva su propio mapa: el límite es **por instancia**, no
+  global, y sirve como protección básica antiautomatización, no como tope
+  estricto.
+
+### Regla `*.gob.es` y DNS
+
+La regla reservada `*.gob.es` (Orden ITC/1542/2005) se comprueba con una
+consulta DNS al host, con techo de tiempo de ~2 s (`AbortSignal.timeout`, en
+`src/lib/verificar.ts`). La consulta nunca abre la web analizada: solo
+pregunta por su nombre. Tres salidas:
+
+| Situación                          | `motivo`                    | Veredicto         |
+| ---------------------------------- | --------------------------- | ----------------- |
+| El host existe                     | `regla_gob_es`              | `oficial_verificado` |
+| El DNS responde que no existe      | `gob_es_inexistente`        | `no_determinable` |
+| La consulta expira o falla (red)   | `gob_es_dns_no_confirmado`  | `no_determinable` |
+
+Nunca se lanza 500 ni se cuelga la petición: si el DNS no responde, el
+veredicto se degrada y el provider `dns_gob_es` queda «degradado» en la
+health durante unos minutos.
+
+### `GET /api/health`
+
+Datos operativos del despliegue, sin nada de lo que envía el ciudadano:
+
+```json
+{
+  "estado": "ok",
+  "version": "0.0.0",
+  "commit": "sha del despliegue en Vercel, si lo inyecta la plataforma",
+  "datos": {
+    "versionListaDominios": "2026-10-18",
+    "entidades": 25,
+    "dominios": 54,
+    "senalesContenido": 18
+  },
+  "providers": [
+    { "nombre": "dns_gob_es", "opcional": false, "estado": "operativo" },
+    { "nombre": "safe_browsing", "opcional": true, "estado": "no_configurado" }
+  ]
+}
+```
+
+`estado` de un provider: `operativo`, `degradado` (ha fallado hace poco) o
+`no_configurado` (opcional y aún sin clave/implementación). Los providers
+viven en `src/lib/providers.ts`: añadir uno nuevo es añadir un objeto a
+`PROVIDERS` y la health lo mostrará sin tocar la ruta.
 
 ## 7. Comprobar que todo sigue en verde
 
 ```sh
 bun scripts/probar-mensajes.ts   # los 10 casos de la organización + los del equipo
-bun test                         # lo mismo, como tests
+bun test                         # lo mismo, más la API (contrato, 429, DNS, health)
 bun run typecheck                # tipos
 bun run build                    # tiene que pasar antes de cada push
 ```
