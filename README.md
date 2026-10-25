@@ -1,6 +1,6 @@
 > **Build night BARRACA x SOTI** · 22 de octubre de 2026, Flywire, València.
 >
-> **Varita**, de Gaia (track Sello + estafas). Destapa el truco antes de pinchar. Publicada en https://build.barraca.house/sello-a; la IA funciona hasta el 30 de noviembre de 2026.
+> **Varita**, de Gaia (track Sello + estafas). Destapa el truco antes de pinchar. Publicada en https://build.barraca.house/punto-atencion-ciudadana/sello-a; la IA funciona hasta el 30 de noviembre de 2026.
 >
 > Repo archivado: es el código tal como quedó tras la noche. Si quieres seguir con él, haz un fork. El CLI del evento y su registro ya no existen, así que las instrucciones de `buildnight` que haya más abajo ya no sirven.
 
@@ -8,7 +8,7 @@
 
 Herramienta del squad `sello-a` para el Build night BARRACA x SOTI (track **Sello + estafas**). Comprueba si un SMS, un correo, una web o una captura de pantalla que dice venir de un organismo público es oficial y, si no lo es, cuál es la web buena.
 
-Publicada en **https://build.barraca.house/sello-a**. Herramienta experimental. No es un servicio oficial.
+Publicada en **https://build.barraca.house/punto-atencion-ciudadana/sello-a**. Herramienta experimental. No es un servicio oficial.
 
 ## En media página
 
@@ -62,7 +62,7 @@ Con Bun y Node 22 o superior:
 
 ```sh
 bun install --frozen-lockfile
-bun run dev                     # http://localhost:3000/sello-a
+bun run dev                     # http://localhost:3000/punto-atencion-ciudadana/sello-a
 bun test                        # tests unitarios y de la API
 bun scripts/probar-mensajes.ts  # casos de datos/ y src/datos/casos-extra.json
 bun run build                   # tiene que pasar antes de cada push
@@ -81,7 +81,7 @@ La IA se llama solo desde el servidor (`src/lib/ia.ts`). Ninguna clave lleva el 
 
 ## Publicar y entregar
 
-Cada push a `main` se publica solo en `https://build.barraca.house/sello-a`. La CLI del evento revisa las seis reglas y entrega la ficha (necesita `gh auth login`):
+Cada push a `main` se publica solo en `https://build.barraca.house/punto-atencion-ciudadana/sello-a`. La CLI del evento revisa las seis reglas y entrega la ficha (necesita `gh auth login`):
 
 ```sh
 curl -fsSL https://build.barraca.house/instalar.sh | sh
