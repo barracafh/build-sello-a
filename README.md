@@ -1,3 +1,9 @@
+> **Build night BARRACA x SOTI** · 22 de octubre de 2026, Flywire, València.
+>
+> **Varita**, de Gaia (track Sello + estafas). Destapa el truco antes de pinchar. Publicada en https://build.barraca.house/sello-a; la IA funciona hasta el 30 de noviembre de 2026.
+>
+> Repo archivado: es el código tal como quedó tras la noche. Si quieres seguir con él, haz un fork. El CLI del evento y su registro ya no existen, así que las instrucciones de `buildnight` que haya más abajo ya no sirven.
+
 # Varita · Destapa el truco antes de pinchar
 
 Herramienta del squad `sello-a` para el Build night BARRACA x SOTI (track **Sello + estafas**). Comprueba si un SMS, un correo, una web o una captura de pantalla que dice venir de un organismo público es oficial y, si no lo es, cuál es la web buena.
