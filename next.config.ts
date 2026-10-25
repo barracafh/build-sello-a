@@ -8,5 +8,8 @@ const basePath = `/${ficha.equipo}`;
 const config: NextConfig = {
   basePath,
   env: { NEXT_PUBLIC_BASE_PATH: basePath },
+  // Adoptado en la actualización de seguridad 16.4.0 → 16.4.2
+  // (next upgrade --agent=security).
+  experimental: { agentUpgrade: "security" },
 };
 export default config;
